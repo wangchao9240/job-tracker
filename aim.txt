@@ -1,0 +1,39 @@
+项目 1：AI 驱动的 Job Application Tracker 🎯
+
+  难度： ⭐⭐☆☆☆
+  时间： 2-3 天
+  市场需求： ⭐⭐⭐⭐⭐（澳洲求职者刚需）
+
+  项目描述：
+
+  帮助求职者管理求职申请的工具，使用 AI 自动分析职位描述并生成定制化 Cover Letter。
+
+  核心功能：
+
+  1. 添加职位申请（公司、职位、链接、状态）
+  2. AI 分析职位描述，提取关键技能
+  3. AI 生成定制化 Cover Letter
+  4. 面试准备建议（基于职位要求）
+  5. 申请状态追踪（Applied → Interview → Offer）
+
+  技术栈：
+
+  前端：Next.js 14 (App Router) + TypeScript + Tailwind + Shadcn/ui
+  后端：Next.js API Routes + Server Actions
+  数据库：Supabase (PostgreSQL)
+  AI：OpenAI API 或 Claude API
+  部署：Vercel
+
+  Vibe Coding 要点：
+
+  - 使用 v0.dev 快速生成 UI 组件
+  - 用 Cursor 或 Claude 生成 API 集成代码
+  - 让 AI 帮你写数据库 Schema 和 SQL 查询
+  - 使用 Shadcn/ui 避免从零写 UI
+
+  为什么适合澳洲市场：
+
+  - ✅ 解决澳洲求职者真实痛点
+  - ✅ 展示 AI 集成能力（2025 热门技能）
+  - ✅ 全栈能力展示
+  - ✅ 可以作为作品集项目
