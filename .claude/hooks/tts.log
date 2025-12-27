@@ -1,0 +1,1398 @@
+Sat 27 Dec 2025 00:20:27 AEST	architect.agent.yaml	你好 ggbb。
+
+分析：我检查了输出目录与规划产物目录，未发现已有的 architecture.md 或 architecture/ 工作流状态文件，因此判定为一次全新的 Architecture 工作流初始化。我按照规则完整加载了已发现的输入文档（PRD 与 UX 规格），并检查了 project-context.md，当前未发现。
+
+初始化结果（job-tracker）：
+- 已创建：_bmad-output/architecture.md（从模板初始化）
+- 已写入工作流前置状态：stepsCompleted: [1]
+
+Documents Found：
+- PRD: 1（_bmad-output/prd.md）
+- Epics/Stories: None found
+- UX Design: 1（_bmad-output/project-planning-artifacts/ux-design-specification.md）
+- Research: None found
+- Project docs: None found
+- Project context: None found
+
+接下来：你还有其他希望纳入的文档吗？如果没有，请回复 C 继续到下一步（项目上下文分析）。
+Sat 27 Dec 2025 00:20:49 AEST	architect.agent.yaml	TTS hook test
+Sat 27 Dec 2025 00:21:05 AEST	architect.agent.yaml	你好 ggbb。
+
+分析：我检查了 _bmad-output 与 _bmad-output/project-planning-artifacts，未发现已有的 _bmad-output/architecture.md 或其它 architecture/ 工作流产物，因此这是一次全新的 Architecture 工作流初始化。我已按要求完整加载已发现的输入文档（PRD 与 UX 规格），并检查 project-context.md，当前未发现。
+
+初始化结果（job-tracker）：
+- 已创建：_bmad-output/architecture.md（已初始化 frontmatter，stepsCompleted: [1]）
+- 已记录 inputDocuments：_bmad-output/prd.md、_bmad-output/project-planning-artifacts/ux-design-specification.md
+
+Documents Found：
+- PRD：1
+- Epics/Stories：未发现
+- UX Design：1
+- Research：未发现
+- Project docs：未发现
+- Project context：未发现
+
+你还有其他希望纳入的文档吗？如果没有，请回复 C 继续到下一步（项目上下文分析）。
+Sat 27 Dec 2025 00:26:56 AEST	architect.agent.yaml	已收到并完整加载你提供的 Product Brief：_bmad-output/project-planning-artifacts/product-brief-job-tracker-2025-12-26.md。我已将它加入 _bmad-output/architecture.md 的 inputDocuments。
+
+当前已纳入的输入文档：
+- _bmad-output/prd.md
+- _bmad-output/project-planning-artifacts/product-brief-job-tracker-2025-12-26.md
+- _bmad-output/project-planning-artifacts/ux-design-specification.md
+
+如果没有其他要加入的文档，请回复 C 继续到下一步（项目上下文分析）。
+Sat 27 Dec 2025 00:29:04 AEST	architect.agent.yaml	分析（Step 2 / Project Context Analysis）：
+- 已加载输入文档：PRD（_bmad-output/prd.md）、Product Brief（_bmad-output/project-planning-artifacts/product-brief-job-tracker-2025-12-26.md）、UX Spec（_bmad-output/project-planning-artifacts/ux-design-specification.md）。
+- 需求规模：共 36 条 FR，分为 8 类；共 9 条 NFR（性能/可靠性/安全与隐私/可访问性）。
+- 关键架构驱动：多来源链接抓取与解析的可靠性 + 显式可恢复路径；证据驱动（requirements↔project bullets）并要求用户确认；可追溯（JD 快照、mapping、cover letter 版本、状态历史）；异步 AI 操作与清晰进度/错误/重试；基于用户的安全隔离与可删除。
+- 复杂度判断：PRD 标注 low，整体偏 low-to-medium（无实时/协作/强合规，但包含解析+AI+后台提醒）。
+
+我会把下面这段（英文）作为“Project Context Analysis”草稿加入架构文档；在保存前先请你确认理解是否一致。
+
+Does this match your understanding of the project scope and requirements?
+
+---
+
+## Project Context Analysis
+
+### Requirements Overview
+
+**Functional Requirements:**
+- Total: 36 FRs across 8 areas: Account & Data, Job Capture & Normalization, JD Analysis, Evidence Library, Mapping-First Workflow, Cover Letter Workflow, Application Tracking, Follow-up & Interview Prep.
+- Core workflow: paste job link → (best-effort parse, with mandatory manual JD fallback) → extract requirements → propose evidence mapping → user review/confirm mapping → generate cover letter draft(s) → save final version → track application status + notes + history.
+
+**Non-Functional Requirements:**
+- Performance: <2s for core non-AI interactions; AI operations can be slower but must be clearly in-progress and non-blocking.
+- Reliability: no data loss; resumable workflow state; persist intermediate artifacts (requirements, confirmed mapping, drafts).
+- Security & Privacy: authenticated access only; user-scoped reads/writes; account deletion that permanently removes all user data.
+- Accessibility: baseline keyboard operability, labeled inputs, visible focus states, readable contrast.
+
+**Scale & Complexity:**
+- Primary domain: desktop-first SPA web app with backend persistence + AI-assisted pipeline.
+- Complexity level: low-to-medium (no real-time collaboration, no regulated domain, single-user focus; but includes multi-source ingestion/parsing + AI workflows + reminders + traceability).
+- Estimated architectural components: ~6–8 (UI shell, Auth/Identity, Persistence/Domain model, Ingestion & Parsing, AI Pipeline, Background jobs/reminders, Observability).
+
+### Technical Constraints & Dependencies
+
+- Desktop Chrome is the primary supported browser; mobile is out of MVP scope.
+- Persistence and authentication are expected (Supabase is explicitly acceptable); enforce user data isolation.
+- UX direction implies a tool-like SPA (3-panel workspace), with clear state visibility and first-class recovery actions.
+- AI-heavy operations (extraction/mapping/generation) must be asynchronous, retryable, and explain failures without forcing re-entry.
+- Link parsing reliability is the highest technical risk; manual JD paste is a mandatory fallback, and JD snapshot storage is required.
+
+### Cross-Cutting Concerns Identified
+
+- Workflow state machine: application lifecycle status + AI step statuses (parsed/needs JD/requirements ready/mapping confirmed/draft saved).
+- Data modeling for traceability: store JD snapshots, extracted requirements, confirmed mappings, draft versions, status history/timestamps.
+- Idempotency & retries: ingestion/parsing and AI generation should tolerate retries without duplicating or corrupting records.
+- Security & data lifecycle: RLS/user scoping, secrets management for AI providers, and hard-delete semantics for account deletion.
+- UX reliability: optimistic vs confirmed saves, clear progress indicators, and “no dead ends” recovery paths.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖架构含义与风险
+[P] Party Mode — 多视角一起审视需求
+[C] Continue — 保存上述分析到 architecture.md 并进入下一步
+
+Sat 27 Dec 2025 00:31:05 AEST	architect.agent.yaml	已保存 Step 2：我已将 Project Context Analysis 追加写入 _bmad-output/architecture.md，并将 frontmatter 更新为 stepsCompleted: [1, 2]。
+
+进入 Step 3（Starter Template Evaluation）前，需要先确认你的技术偏好（目前未发现 project-context.md 里的既定技术规则）。请你按条回答即可：
+
+1) 语言：TypeScript/JavaScript 是否为首选？
+2) 前端框架：Next.js / React（Vite）/ 其它？
+3) UI 组件与样式：你在 UX 规格里倾向 Tailwind + shadcn/ui——是否确定采用？
+4) 数据库：PostgreSQL（Supabase）是否确定？是否需要本地开发（Docker）？
+5) 部署：Vercel / Railway / Supabase hosting / 其它？
+6) 认证：Supabase Auth 是否为默认？
+7) AI 集成：是否已有提供商偏好（OpenAI/Anthropic/其它）与成本/隐私约束？
+
+你回复后，我会（按流程要求）做 web 搜索核对当前主流 starter 的最新初始化命令与维护状态，然后给出候选项对比与推荐，并提供 A/P/C 菜单。
+Sat 27 Dec 2025 00:43:57 AEST	architect.agent.yaml	收到你的技术偏好。我已按 Step 3 要求做了在线核对：
+- create-next-app / next 当前版本：16.1.1（npm registry）
+- create-next-app@latest 需要 Node >= 20.9.0（我本机当前 Node v16.16.0，会报 EBADENGINE；实际初始化时请先升级 Node）
+- Next.js 官方维护的 with-supabase 示例存在，并给出命令：npx create-next-app --example with-supabase ...（该示例包含 Supabase SSR + Tailwind + shadcn/ui，但默认是 TypeScript 结构）
+- shadcn CLI 当前版本：3.6.2；本机 Node v16 无法运行 shadcn@latest（需要更高版本 Node）。
+
+基于这些信息，我拟写了以下 Starter Template Evaluation（英文）草稿供你确认：
+
+---
+
+## Starter Template Evaluation
+
+### Primary Technology Domain
+
+Full-stack web application (desktop-first SPA UX) built with Next.js (App Router) + Tailwind CSS + shadcn/ui, deployed on Vercel, with Supabase (Postgres + Auth).
+
+### Starter Options Considered
+
+**Option A — Minimal Next.js (recommended for JS-first codebase)**
+- Bootstrap with `create-next-app@latest` using `--js`, App Router, Tailwind, ESLint.
+- Add shadcn/ui via `npx shadcn@latest init`.
+- Add Supabase (`@supabase/supabase-js` + `@supabase/ssr`) and wire Auth/DB incrementally.
+- Pros: clean, minimal, aligns with “JavaScript only” preference; easiest to evolve around our domain model and workflows.
+- Cons: Supabase Auth patterns need to be integrated (but we control the shape and can keep it minimal).
+
+**Option B — Next.js official example: `with-supabase`**
+- Bootstrap via `npx create-next-app --example with-supabase <app>`.
+- Includes: Supabase SSR cookie auth (`@supabase/ssr`), Tailwind, shadcn/ui, and ready-to-run auth UI.
+- Pros: fastest way to get Supabase Auth SSR + UI patterns working; maintained in the Next.js repo.
+- Cons: template is TypeScript-oriented (typescript + `tsconfig.json` included); may be heavier/more opinionated than we need.
+
+### Selected Starter: Option A — Minimal Next.js (JS) + shadcn/ui
+
+**Rationale for Selection:**
+- Matches your explicit preference for a JavaScript codebase.
+- Keeps the foundation boring and predictable for a solo builder.
+- Avoids inheriting template features we’ll delete; we’ll add Supabase + AI provider integration intentionally.
+
+**Initialization Command:**
+
+```bash
+npx create-next-app@latest job-tracker \
+  --js \
+  --app \
+  --tailwind \
+  --eslint \
+  --src-dir \
+  --import-alias "@/*" \
+  --use-npm
+```
+
+**Architectural Decisions Provided by Starter:**
+
+**Language & Runtime:**
+- JavaScript (no TypeScript bootstrap), Next.js via `create-next-app` (current: 16.1.1).
+- Note: `create-next-app@latest` requires Node >= 20.9.0.
+
+**Styling Solution:**
+- Tailwind CSS configured.
+- shadcn/ui to be initialized next (`npx shadcn@latest init`) after Node upgrade.
+
+**Build Tooling:**
+- Next.js default bundler/config (no Turbopack/Rspack flags chosen initially for stability).
+
+**Testing/Linting:**
+- ESLint configured via Next.js defaults.
+
+**Code Organization:**
+- App Router enabled; `src/` directory layout; import alias `@/*`.
+
+**Development Experience:**
+- Standard Next.js dev/build/start scripts; ready for Vercel deployment workflows.
+
+**Note:** Project initialization using this command should be the first implementation story.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 进一步探讨是否值得改用 Option B（TS）或其它 starter
+[P] Party Mode — 让不同视角评估 starter 取舍
+[C] Continue — 保存上述 Starter 评估到 architecture.md 并进入下一步（Step 4 决策）
+
+Sat 27 Dec 2025 00:47:41 AEST	architect.agent.yaml	进入 Step 4（Core Architectural Decisions）。我已完成在线版本核对：next/create-next-app 16.1.1；@supabase/supabase-js 2.89.0；@supabase/ssr 0.8.0；zod 4.2.1；react-hook-form 7.69.0；@tanstack/react-query 5.90.12；tailwindcss 4.1.18。
+
+分析：基于你已确定的偏好（JS + Next.js + Tailwind+shadcn + Supabase + Vercel + Supabase Auth，以及 OpenAI/Anthropic 通过可配置 BASE_URL 的三方中转），Starter 已覆盖基础框架；剩下需要我们共同拍板的，是数据建模/迁移策略、RLS/权限边界、Next.js 里 API/Server Actions 的组织方式、前端状态管理与异步数据层、后台定时提醒的实现位置，以及 AI Provider 抽象与密钥/BASE_URL 的配置规范。
+
+我先从第 1 类决策开始：Data Architecture（数据架构）。
+
+需要你选/确认的点：
+
+1) Schema / Migrations 方式（最关键）
+- 选项 A：只用 Supabase Dashboard/SQL Editor 手工改表（最快但不可追溯）
+- 选项 B：使用 Supabase CLI 的 migration（推荐：可追溯、可回放；不需要本地 Docker，只是把 SQL migration 文件提交到 repo，并应用到远端）
+- 选项 C：引入 ORM（Prisma/Drizzle）来管理 schema（更重，且会把不少决策提前固化）
+你倾向哪一个？
+
+2) 数据模型粒度（MVP）
+- 选项 A：更简单：把 requirements、mapping 作为 applications 表里的 JSONB 字段存（读写简单、查询弱）
+- 选项 B：更规范：requirements / mappings 拆表做关联（查询强、表更多、实现更重）
+我倾向“混合”：requirements+mapping 先 JSONB（MVP 快），cover letter 版本/状态历史用独立表（可追溯）。你接受吗？
+
+3) 明确必须持久化的追溯数据（确认一下是否都要）
+- JD snapshot（原文）
+- extracted requirements（可编辑）
+- confirmed mapping（可编辑/版本化）
+- cover letter versions（preview/final + 历史）
+- status history（变更事件）
+- reminders（7 天未响应）
+是否全部都需要？如果想砍掉 MVP 中某一项，也请说。
+
+你先回答 1/2/3。然后我会把 Data Architecture 的“决策记录草稿（英文）”整理出来，并给你 A/P/C 菜单继续下一类决策。
+Sat 27 Dec 2025 00:51:08 AEST	architect.agent.yaml	收到「都要 C」。这里我需要你帮我消歧一下，因为我上一轮有 1/2/3 三个问题，其中只有第 1 题有 A/B/C 选项，第 2 题只有 A/B。
+
+请你确认：
+1) 你是想在“Schema / Migrations”选 **C（ORM）** 吗？如果是：更偏 **Prisma** 还是 **Drizzle**？
+2) “数据模型粒度（MVP）”你选 **A（applications 里 JSONB）**、**B（拆表）**，还是接受我提的**混合**（requirements+mapping 先 JSONB；cover letter versions / status history / reminders 拆表）？
+3) 追溯数据你说“都要”我已记录 ✅
+
+你回 1/2 两点后，我会把 Data Architecture 的决策记录（英文）整理出来，并给你本类别的 A/P/C 菜单。
+Sat 27 Dec 2025 00:52:17 AEST	architect.agent.yaml	明白：你说的 C 是 Continue（不是选 ORM）。那我们先把 Data Architecture 这两项决策定下来，才能继续。
+
+已确认：追溯数据“都要” ✅（JD snapshot、requirements、confirmed mapping、cover letter versions、status history、reminders）。
+
+还差两项请你拍板：
+
+1) Schema / Migrations 方式
+- A：Supabase Dashboard/SQL Editor 手工改表
+- B：Supabase CLI migrations（我推荐：可追溯、可回放、适合协作/AI 代理一致性）
+你选 A 还是 B？
+
+2) 数据模型粒度（MVP）
+- A：requirements + mapping 都放 applications 的 JSONB
+- B：requirements/mapping 全拆表
+- 混合（我推荐）：requirements + mapping 先 JSONB；cover letter versions / status history / reminders 拆表
+你选哪一个？
+
+如果你想直接按我推荐继续，回复：B + 混合。
+Sat 27 Dec 2025 00:54:33 AEST	architect.agent.yaml	已确认 Data Architecture 决策：
+- Migrations：选 B（Supabase CLI migrations；已在线核对 supabase CLI npm 版本为 2.70.5，可在 repo 中 pin 版本）
+- MVP 数据模型：选“混合”（requirements+mapping 先 JSONB；cover letter versions/status history/reminders 拆表）
+- Traceability：你确认“都要”
+
+下面是我拟写要加入架构文档的英文决策记录（本 Step 完成时会统一保存；现在先请你确认内容是否准确）：
+
+---
+
+### Data Architecture
+
+**Database:** Supabase Postgres (managed) with Supabase Auth.
+
+**Schema & Migrations:**
+- Use Supabase CLI migrations (SQL files committed to the repo) for traceable, repeatable schema evolution.
+- Verified tooling: `supabase` CLI (npm) `2.70.5`.
+- No local Docker requirement for this workflow; migrations are applied to the remote Supabase project.
+
+**Data Modeling (MVP, hybrid):**
+- `applications` table is the aggregate root for the “one job → one application record” workflow.
+- Store high-churn, per-application AI artifacts as JSONB in `applications` for MVP speed:
+  - `jd_snapshot` (text)
+  - `extracted_requirements` (JSONB array; user-editable)
+  - `confirmed_mapping` (JSONB; requirement→projectBulletIds; user-editable)
+- Use normalized tables where append-only history and retrieval are core product guarantees:
+  - `cover_letter_versions` (preview/final + history; references `applications`)
+  - `application_status_events` (status change timeline; references `applications`)
+  - `reminders` (7-day follow-up reminders; references `applications`)
+- Evidence library is normalized:
+  - `projects`, `project_bullets` (user-owned; used by mapping).
+
+**Validation Strategy:**
+- Use `zod` `4.2.1` for runtime validation at server boundaries (Route Handlers / Server Actions) and for form validation.
+
+**Traceability Guarantees (persist all):**
+- JD snapshot, extracted requirements, confirmed mapping, cover letter versions, status history events, reminders.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖数据建模/迁移的边界与风险
+[P] Party Mode — 多视角审视 Data Architecture
+[C] Continue — 进入下一类决策（Authentication & Security）
+
+Sat 27 Dec 2025 00:55:44 AEST	architect.agent.yaml	好的，继续到 Step 4 的下一类决策：Authentication & Security。
+
+分析：你已选定 Supabase + Supabase Auth；且 AI 调用走第三方中转（自定义 BASE_URL + token/key），这会直接影响“密钥管理、server-only 边界、以及 API 访问控制”。我先收集几个关键偏好，避免我替你做决定。
+
+请你回答下面 4 个点（直接回选项字母/一句话即可）：
+
+1) 登录方式（Supabase Auth）
+A. Email + Password（最直观，with-supabase 示例也支持）
+B. Magic Link（免密码）
+C. OAuth（Google 等）
+你选哪个做 MVP 默认？
+
+2) Session / SSR 策略（Next.js App Router）
+A. 使用 `@supabase/ssr` 的 cookie-based session（推荐，适配 Server Components/Route Handlers/Server Actions）
+B. 纯客户端 session（更简单但 SSR/Server Actions 体验差）
+选 A 还是 B？
+
+3) 授权边界（数据隔离）
+A. 全表开启 RLS，所有行以 `user_id = auth.uid()` 约束（推荐）
+B. 先不做 RLS（MVP 快但风险高）
+选 A 还是 B？
+
+4) AI 密钥与中转 BaseURL 的配置规范
+我建议：所有 AI key/token + base url **只在服务端**读取（不下发浏览器），并抽象成 `AI_PROVIDERS` 配置（OpenAI/Anthropic/未来扩展）。你接受吗？（y/n）
+
+你回完我会整理本类别的英文“Auth & Security”决策记录草稿，然后给你本类别的 A/P/C 菜单。
+Sat 27 Dec 2025 00:58:15 AEST	architect.agent.yaml	分析：你已明确 Auth/Security 的关键偏好（Magic Link、SSR Cookie Session、全表 RLS、AI 密钥/BASE_URL 仅服务端读取）。这四项基本锁定了我们在 Next.js + Supabase 上的安全边界与会话模型，也决定了 AI 调用必须通过 server-only 的“provider 抽象层”转发，避免把 token/key 暴露到浏览器。
+
+下面是我拟写的英文“Authentication & Security”决策记录草稿（请确认是否准确）：
+
+---
+
+### Authentication & Security
+
+**Authentication (MVP):**
+- Supabase Auth with Magic Link (email OTP) as the default sign-in method.
+
+**Session Model (Next.js App Router):**
+- Cookie-based session using `@supabase/ssr` `0.8.0` to make the user session available across Server Components, Route Handlers, Server Actions, Middleware, and Client Components.
+
+**Authorization / Data Isolation:**
+- Enable Postgres Row Level Security (RLS) on all user-owned tables.
+- Use a `user_id` column on rows and enforce `user_id = auth.uid()` in policies.
+- Server-side “admin” operations (e.g., account deletion) use the Supabase service role key and MUST remain server-only.
+
+**Secrets & Provider Configuration (AI via third-party gateway):**
+- All AI credentials and gateway base URLs are server-only (never exposed to the browser).
+- Provider configuration is pluggable to support OpenAI, Anthropic, and future vendors.
+- Environment variables (server-only):
+  - `OPENAI_BASE_URL` + `OPENAI_API_KEY`
+  - `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`
+- Requests to AI providers are routed through a server-side abstraction layer that selects provider by name and uses the corresponding base URL and credentials.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖安全边界（RLS/会话/密钥）与潜在风险
+[P] Party Mode — 多视角审视 Auth & Security
+[C] Continue — 进入下一类决策（API & Communication Patterns）
+
+Sat 27 Dec 2025 01:05:00 AEST	architect.agent.yaml	已收到 C：我已把 “Data Architecture” 和 “Authentication & Security” 两个类别的决策内容追加写入 `_bmad-output/architecture.md`（仍处于 Step 4 过程中，后面全部类别完成后再把 stepsCompleted 更新为 [1,2,3,4]）。
+
+现在进入下一类决策：API & Communication Patterns。
+
+我已做了在线核对以匹配你的“第三方中转 baseURL”需求：
+- `openai` npm `6.15.0` 支持 `OPENAI_BASE_URL`
+- `@anthropic-ai/sdk` npm `0.71.2` 支持 `ANTHROPIC_BASE_URL`，并支持 `authToken`（对应你的 `ANTHROPIC_AUTH_TOKEN`）
+
+请你拍板 4 个点（直接回选项字母即可）：
+
+1) 服务器接口形态（核心）
+A. Next.js Route Handlers（`/app/api/**/route.js`），客户端用 `fetch` 调用（推荐：清晰、可测试、适合长任务/未来流式）
+B. Server Actions 优先（尽量不用 `/api` 路由）
+C. tRPC（更强类型但更重）
+你选哪个？
+
+2) AI 调用的封装方式
+A. 使用官方 SDK（OpenAI/Anthropic），通过 `baseURL` 指向中转站
+B. 统一用 `fetch` 自己封装 HTTP（更可控、更少依赖）
+你选哪个？
+
+3) AI 请求的“provider 选择”方式（为未来扩展留口子）
+A. 请求 body 字段：`{ provider: "openai"|"anthropic"|... }`
+B. URL 路径：`/api/ai/openai/...`、`/api/ai/anthropic/...`
+你选哪个？
+
+4) 生成类接口是否需要“流式输出”
+A. MVP 不做流式：一次性返回结果，前端用 loading 状态即可
+B. MVP 就做流式（SSE / stream）
+你选哪个？
+
+你回复后，我会整理本类别的英文决策记录草稿，并给你本类别的 A/P/C 菜单。
+Sat 27 Dec 2025 01:07:08 AEST	architect.agent.yaml	分析：你已为 API 类别定了非常清晰的方向：Next.js Route Handlers 作为统一后端边界（A），AI 外呼用 fetch 自己封装（B），provider 在请求体字段里选择（A），且 MVP 就要流式输出（B）。这意味着我们会把“AI 生成”建模为一个可流式的 server-side 端点（SSE/stream），前端用 fetch 读取流并更新 UI 状态。
+
+下面是我拟写的英文 “API & Communication Patterns” 决策记录草稿（请确认是否准确）：
+
+---
+
+### API & Communication Patterns
+
+**Server Interface Pattern:**
+- Use Next.js App Router Route Handlers as the primary server API boundary (`/app/api/**/route.js`).
+- The client communicates with the server via `fetch` calls to these endpoints.
+
+**AI Provider Integration (via third-party gateway):**
+- Do not rely on vendor SDKs for outbound AI calls.
+- Implement provider adapters using `fetch` for maximum control and to support a custom gateway `baseURL`.
+- Provider selection is explicit in the request body, e.g.:
+  - `{ "provider": "openai" | "anthropic" | "...", "model": "...", "input": ... }`
+
+**Streaming (MVP):**
+- AI generation endpoints stream results back to the browser in MVP.
+- Preferred transport: Server-Sent Events (SSE) or chunked streaming `Response` from Route Handlers.
+- Stream protocol includes clear event types (e.g., `delta`, `done`, `error`) so the UI can render partial output and recover on failures.
+
+**Error & Retry Semantics:**
+- Server endpoints return consistent JSON error envelopes for non-stream responses.
+- Streaming endpoints emit a terminal `error` event with a stable error code and message.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖“流式协议/幂等/重试/长任务”细节
+[P] Party Mode — 多视角审视 API 与流式设计取舍
+[C] Continue — 保存本类别到 architecture.md 并进入下一类决策（Frontend Architecture）
+
+Sat 27 Dec 2025 01:08:47 AEST	architect.agent.yaml	已保存 API & Communication Patterns 到 `_bmad-output/architecture.md`。
+
+进入下一类决策：Frontend Architecture。
+
+分析：你在 UX 规格里已经倾向 Tailwind + shadcn/ui + 3-panel 工作台，并且我们决定了：客户端通过 fetch 调 Route Handlers；AI 生成是流式（SSE/stream）；后端返回的是稳定的事件类型。前端还需要拍板：数据请求/缓存层、表单与校验、全局状态、以及流式消费方式。
+
+请你选 4 个点（直接回选项字母即可）：
+
+1) 服务器状态管理（数据请求/缓存）
+A. `@tanstack/react-query`（已核对 5.90.12；适合列表/详情/重试/缓存）
+B. 直接用 fetch + React state（更轻，但缓存/重试/失效会很快变复杂）
+你选 A 还是 B？
+
+2) 表单管理
+A. `react-hook-form`（7.69.0）+ `zod`（4.2.1）
+B. 只用原生表单 + zod（更少依赖，但表单复杂时会痛）
+选 A 还是 B？
+
+3) UI 状态（非服务器数据）
+A. 仅用 React state + Context（MVP 足够）
+B. Zustand/Jotai 等（更结构化）
+选 A 还是 B？
+
+4) 流式渲染策略（AI 输出）
+A. 直接在页面里逐字/逐块渲染（delta append），完成后再写入 `cover_letter_versions`
+B. 先写入临时 store，done 后一次性渲染
+你选 A 还是 B？
+
+你回复后我会整理英文“Frontend Architecture”决策记录草稿，并给你本类别的 A/P/C 菜单。
+Sat 27 Dec 2025 01:13:46 AEST	architect.agent.yaml	分析：你对前端架构的取向很清晰：React Query 做服务器状态、RHF+Zod 做表单、引入轻量全局 store、以及 AI 输出要边流边渲染（delta append）。这与 3-panel 工作台 + 流式生成体验非常一致。
+
+我已在线核对版本：zustand 5.0.9；jotai 2.16.1（你在第 3 点选了 B，但还没指明用哪个）。
+
+请先确认一个小点：第 3) 你选的全局状态库是 **Zustand** 还是 **Jotai**？（回：Zustand / Jotai）
+
+同时，下面是我拟写的英文 “Frontend Architecture” 决策记录草稿（其中 state library 会用你确认的那个替换）：
+
+---
+
+### Frontend Architecture
+
+**UI System & Layout:**
+- Tailwind CSS + shadcn/ui components.
+- Desktop-first, 3-panel workspace layout (list + record workspace + context panel) as defined in UX spec.
+
+**Server State / Data Fetching:**
+- Use `@tanstack/react-query` `5.90.12` for server state: caching, retries, background refetch, and list/detail consistency.
+- All server mutations go through Route Handlers; invalidate or update query cache on success.
+
+**Forms & Validation:**
+- Use `react-hook-form` `7.69.0` with `zod` `4.2.1` for schema-driven validation and ergonomic form state management.
+
+**Client/UI State (non-server state):**
+- Use {Zustand|Jotai} (verified versions: zustand `5.0.9`, jotai `2.16.1`) for UI state that spans panels and components (e.g., selected application id, panel open/close, in-progress drafts, filters that should persist).
+
+**Streaming Consumption (AI output):**
+- Render streamed AI output incrementally in the UI (append `delta` chunks as they arrive).
+- Persist the final content as a new `cover_letter_versions` row once the stream completes (`done`).
+- If the stream errors, keep partial output in UI with a retry action, without losing the underlying application record.
+
+---
+
+确认完 Zustand/Jotai 后，你想怎么做？
+[A] Advanced Elicitation — 深挖流式渲染/缓存失效/一致性策略
+[P] Party Mode — 多视角审视前端状态划分
+[C] Continue — 保存本类别到 architecture.md 并进入下一类决策（Infrastructure & Deployment）
+
+Sat 27 Dec 2025 01:14:48 AEST	architect.agent.yaml	已确认：前端全局状态库选 Zustand（5.0.9），并已把 Frontend Architecture 写入 `_bmad-output/architecture.md`。
+
+现在进入下一类决策：Infrastructure & Deployment。
+
+基于你已定：Vercel 部署 + Supabase 托管 Postgres/Auth；同时 AI 调用走第三方中转（server-only env）。我们还需要拍板：环境变量管理、后台任务/提醒的运行方式、以及监控/日志。
+
+请你回答 4 个点（回选项字母即可）：
+
+1) 定时任务/提醒（7 天 follow-up）运行位置
+A. Vercel Cron + Route Handler（推荐：最贴合 Vercel）
+B. Supabase Scheduled Functions / Edge Functions（更贴近数据侧）
+C. 不做定时任务，靠前端打开时提示（最省，但不符合 PRD 目标）
+你选哪个？
+
+2) 后台任务执行的授权方式（避免越权）
+A. 仅 server-side 使用 Supabase service role key 执行（推荐）
+B. 用普通用户会话执行（不可靠）
+选 A 还是 B？
+
+3) 环境变量管理
+A. `.env.local`（本地）+ Vercel Project Env Vars（线上），并区分 `NEXT_PUBLIC_` 与 server-only
+B. 其它方式
+选 A 还是 B？
+
+4) 可观测性（MVP）
+A. 只用 Vercel logs + 简单结构化日志（JSON）
+B. 直接上 Sentry（前端 + 后端）
+你选哪个？
+
+你回复后我会整理英文 “Infrastructure & Deployment” 决策记录草稿，并给你本类别的 A/P/C 菜单。
+Sat 27 Dec 2025 01:27:13 AEST	architect.agent.yaml	分析：你在基础设施上选择了最“无聊且能跑”的组合：Vercel + Supabase + Vercel Cron + 结构化日志。关键架构含义是：
+- 7 天提醒将通过 Vercel Cron 定期触发一个 Route Handler；
+- 后台任务用 Supabase service role 在服务端执行，必须保证端点具备最小暴露面与幂等性；
+- 环境变量需要严格区分 `NEXT_PUBLIC_` 与 server-only，尤其是 AI 中转站的 baseURL + token。
+
+下面是我拟写的英文 “Infrastructure & Deployment” + 本 Step 的“Decision Priority/Impact”收束段落草稿（请确认）：
+
+---
+
+### Infrastructure & Deployment
+
+**Hosting & Runtime:**
+- Deploy on Vercel.
+
+**Scheduled Jobs (Follow-up reminders):**
+- Use Vercel Cron Jobs to trigger a Next.js Route Handler on a schedule.
+- Cron configuration is defined via `vercel.json` `crons` (path + schedule), following Vercel’s cron examples.
+
+**Background Execution & Authorization:**
+- Background/cron handlers run server-side and use the Supabase service role key for privileged database operations.
+- Cron jobs MUST be idempotent (safe to retry) and should avoid duplicate reminder creation.
+
+**Environment Configuration:**
+- Local development: `.env.local`.
+- Deployment: Vercel Project Environment Variables for Preview/Production.
+- Public vs server-only split:
+  - Public (browser): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or legacy anon key).
+  - Server-only: `SUPABASE_SERVICE_ROLE_KEY` and all AI gateway credentials (`OPENAI_BASE_URL`, `OPENAI_API_KEY`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`).
+
+**Observability (MVP):**
+- Use Vercel Logs.
+- Emit structured JSON logs for server endpoints and background jobs (include request id, route, outcome, application id; never log secrets).
+
+### Decision Priority Analysis
+
+**Critical Decisions (Block Implementation):**
+- Next.js App Router + Vercel deployment foundation.
+- Supabase Postgres + Supabase Auth with RLS on all user-owned tables.
+- Cookie-based sessions via `@supabase/ssr`.
+- Schema migrations via Supabase CLI migrations.
+- Server API boundary via Route Handlers.
+- AI provider gateway integration via server-side `fetch` adapters with streaming responses.
+- Vercel Cron-based 7-day follow-up reminders (background job pattern).
+
+**Important Decisions (Shape Architecture):**
+- Hybrid data modeling (JSONB in `applications` + normalized history tables).
+- React Query for server state + RHF+Zod for forms.
+- Zustand for cross-panel UI state.
+
+**Deferred Decisions (Post-MVP / As-needed):**
+- Advanced observability (e.g., Sentry).
+- More complex ingestion pipelines / queues.
+- Bundler/tooling optimizations beyond defaults.
+
+### Decision Impact Analysis
+
+**Implementation Sequence (high-level):**
+1. Bootstrap Next.js project + Tailwind + shadcn/ui.
+2. Create Supabase project, set up auth (Magic Link) and RLS.
+3. Establish schema + migrations (applications, projects, project_bullets, cover_letter_versions, application_status_events, reminders).
+4. Implement core CRUD + traceability primitives.
+5. Implement AI provider abstraction (server-only) + streaming endpoints.
+6. Implement mapping-first workflow and cover letter generation/versioning.
+7. Implement Vercel Cron reminders + idempotent reminder creation.
+
+**Cross-Component Dependencies:**
+- RLS + session model impacts every DB read/write path.
+- Streaming protocol shapes both UI rendering and persistence of final artifacts.
+- Background jobs require service role usage and strict endpoint hardening.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖 cron 幂等/安全与 env 规范
+[P] Party Mode — 多视角审视基础设施与后台任务
+[C] Continue — 保存上述内容到 architecture.md，并完成 Step 4 进入 Step 5（Implementation Patterns）
+
+Sat 27 Dec 2025 01:29:18 AEST	architect.agent.yaml	进入 Step 5：Implementation Patterns & Consistency Rules。
+
+分析：我们现在的技术栈已定（Next.js App Router + Supabase + Vercel + Route Handlers + 流式 AI + React Query + RHF/Zod + Zustand）。接下来要做的是把“AI 代理最容易各做各的地方”写成硬性一致性规则：命名（DB/API/代码）、目录结构、API 返回格式、错误/日志格式、时间格式、流式事件协议、以及状态管理边界。否则不同 agent 会在 snake_case/camelCase、响应封装、SSE 事件命名、文件命名、以及 DB 访问层上产生不兼容实现。
+
+Sat 27 Dec 2025 01:31:46 AEST	architect.agent.yaml	已保存 Step 5：我已将 Implementation Patterns & Consistency Rules 追加写入 _bmad-output/architecture.md，并将 frontmatter 更新为 stepsCompleted: [1, 2, 3, 4, 5]。
+
+进入 Step 6：Project Structure & Boundaries。
+
+分析：为了避免与当前仓库根目录下的 _bmad / _bmad-output 混在一起，我建议将真正的 Next.js 应用代码放在仓库根目录下的子目录（与 Step 3 初始化命令一致）：./job-tracker/（Vercel 项目 Root Directory 指向该目录）。这样结构清晰且利于 AI 代理定位边界。
+
+下面是我拟写要追加到架构文档的“Project Structure & Boundaries”（英文）草稿，包含：完整目录树、边界定义、以及把 PRD 的 8 个 FR 类别映射到具体目录/端点。
+
+Sat 27 Dec 2025 01:40:32 AEST	architect.agent.yaml	进入 Step 7：Architecture Validation & Completion。
+
+分析（验证结果概览）：
+- 决策兼容性：Next.js + Supabase + Vercel + Route Handlers + React Query/RHF/Zod/Zustand 组合一致；AI 走 server-only fetch + 可配置 BASE_URL 也一致。
+- 发现 2 个需要在文档中统一的“冲突点”（否则 AI 代理会写出不兼容实现）：
+  1) 流式端点命名：文档同时出现了 `/api/ai/stream` 与 `/api/cover-letter/stream`。
+  2) Cron 端点安全：我们已决定 service role 执行后台任务，但需要明确 cron 端点的访问控制（建议 CRON_SECRET / Authorization）。
+- 环境/版本就绪性：`create-next-app@latest` 需要 Node >= 20.9.0（当前本地 Node 16.16.0），这属于实现前必须解决的“前置条件”。
+
+下面是我拟追加到架构文档的 Validation Results（英文）草稿，里面包含上述问题的“建议修正/统一口径”。你确认后我再写入并完成 Step 7。
+
+Sat 27 Dec 2025 01:44:53 AEST	architect.agent.yaml	🎉 架构工作流已完成（Step 8）。
+
+总结：
+- 产出文档：_bmad-output/architecture.md（已标记 stepsCompleted: [1..8]，status: complete）
+- 工作流状态已更新：_bmad-output/bmm-workflow-status.yaml 的 create-architecture 已指向该文档
+- 已统一关键口径：流式端点以 POST /api/cover-letter/stream 为准；Cron 端点需 CRON_SECRET 授权；实现前置条件为 Node >= 20.9.0
+
+可选增强：是否创建一个 project-context.md（给后续 AI 代理的“短版硬规则”速查表）？
+[Y] 创建/更新 project-context.md
+[N] 暂不需要
+
+Sat 27 Dec 2025 01:46:52 AEST	architect.agent.yaml	Step 1（Context Discovery）完成：我未发现已有的 project-context.md，因此已按模板初始化 `_bmad-output/project-context.md`，用于后续生成 AI 代理必须遵守的硬规则。
+
+基于已完成的 `_bmad-output/architecture.md`，我发现并将用于生成 context 的关键信息包括：
+
+**Technology Stack（来自架构文档 / 已核对版本）**
+- Next.js App Router（next/create-next-app 16.1.1；实现前置：Node >= 20.9.0）
+- Supabase：`@supabase/supabase-js 2.89.0`、`@supabase/ssr 0.8.0`、Supabase CLI（npm）2.70.5
+- UI：Tailwind CSS 4.1.18 + shadcn/ui（CLI 需要较新 Node）
+- Frontend data/forms/state：React Query 5.90.12；react-hook-form 7.69.0 + zod 4.2.1；zustand 5.0.9
+- API：Next.js Route Handlers + `fetch`，AI 外呼用 `fetch`，流式输出（SSE/stream）
+- Infra：Vercel + Vercel Cron（`vercel.json` `crons`）+ server-only `CRON_SECRET`
+
+**Existing Patterns Found**
+- 当前仓库尚未初始化真正的 Next.js 应用代码（暂无 package.json / src/），因此“代码层”的既有约定为 0；我们会直接把 architecture.md 里已定的命名/响应封装/流式协议/安全边界，提炼成 project-context.md 的硬规则。
+
+下一步会生成的“关键规则”范围包括：
+- DB snake_case vs API/UI camelCase 的映射规则
+- 统一的 API envelope 与 streaming event（delta/done/error）协议
+- service role / session / RLS 的边界与禁区
+- AI gateway 的环境变量命名与 server-only 约束
+- Cron 端点授权（Authorization: Bearer CRON_SECRET）与幂等要求
+
+如果你确认无误，请回复 C 进入 Step 2（生成 project-context.md 内容）。
+Sat 27 Dec 2025 01:48:19 AEST	architect.agent.yaml	我进入 Step 2（生成 project-context 规则）。先从第 1 类：Technology Stack & Versions 开始，我会给出一段尽量精炼、但能约束 AI 代理不跑偏的英文规则草稿；你确认后我再写入 _bmad-output/project-context.md。
+
+Sat 27 Dec 2025 01:49:29 AEST	architect.agent.yaml	已保存第 1 类（Technology Stack & Versions）到 _bmad-output/project-context.md。
+
+进入下一类：Language-Specific Rules（JavaScript）。我会只写“容易被 AI 代理忽略、但会导致不一致/bug”的规则。
+
+在写草稿前，我需要你确认 2 个小点（只回 A/B 即可）：
+1) 代码风格与格式化：A. 只用 ESLint（不引入 Prettier） B. ESLint + Prettier
+2) 模块系统：A. 全部 ESM（import/export） B. 允许 CommonJS（require/module.exports）
+
+你回完我再给出该类别的英文规则草稿，并提供 A/P/C。
+Sat 27 Dec 2025 01:50:18 AEST	architect.agent.yaml	收到：只用 ESLint（不引入 Prettier），且全 ESM（import/export）。
+
+下面是我拟写的英文“Language-Specific Rules (JavaScript)”草稿（精简版，避免 AI 代理踩坑）：
+
+---
+
+### Language-Specific Rules (JavaScript)
+
+- **ESM only:** Use `import/export` everywhere. Do not introduce `require()` or `module.exports`.
+- **No TypeScript:** Do not add `.ts/.tsx` files or TypeScript-only tooling. Keep code in `.js/.jsx`.
+- **Client vs Server boundaries:**
+  - Server-only code must live under `src/lib/server/**` and must not be imported by Client Components.
+  - Any file that uses secrets (`SUPABASE_SERVICE_ROLE_KEY`, AI keys/tokens, `CRON_SECRET`) must be server-only.
+- **Environment variables:**
+  - Never read server-only env vars from client code.
+  - Only `NEXT_PUBLIC_*` env vars may be referenced in browser code.
+- **Date/time:** Always treat timestamps as UTC and serialize as ISO-8601 (`toISOString()`); never store UI-local formatted strings.
+- **Error objects:** Throw/return stable error codes from server boundaries (Route Handlers) and avoid leaking raw upstream error messages to the client.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 进一步补充 JS/Next 相关“容易踩坑”的细节
+[P] Party Mode — 多视角审视语言规则
+[C] Continue — 写入 project-context.md 并进入下一类（Framework-Specific Rules）
+
+Sat 27 Dec 2025 01:51:02 AEST	architect.agent.yaml	已保存 Language-Specific Rules 到 _bmad-output/project-context.md。
+
+进入下一类：Framework-Specific Rules（Next.js App Router + Supabase + Streaming）。
+
+我会给出精简但“能防止代理分叉实现”的规则草稿，重点覆盖：
+- Route Handlers 作为唯一 API 边界
+- Supabase session client vs service-role client 的使用禁区
+- RLS 强制与 user_id 约束
+- streaming 端点（POST /api/cover-letter/stream）的事件协议
+- Cron 端点（/api/cron/reminders）授权与幂等
+
+下面是该类别的英文草稿：
+
+---
+
+### Framework-Specific Rules (Next.js + Supabase)
+
+- **App Router only:** Use `src/app/**` (no Pages Router).
+- **Route Handlers are the API boundary:** Implement server APIs only in `src/app/api/**/route.js`.
+- **Auth/session:** Use cookie-based session via `@supabase/ssr` in server code (`src/lib/supabase/server.js`).
+- **RLS is mandatory:** All user-owned tables must have RLS enabled and policies must enforce `user_id = auth.uid()`.
+- **Service role usage:** Use the service role client only for privileged background/admin tasks (cron, account deletion). Never expose service role to the browser.
+- **AI streaming endpoint:** Canonical streaming endpoint is `POST /api/cover-letter/stream`.
+  - Stream events: `delta`, `done`, `error`.
+  - Persist final output to `cover_letter_versions` on `done`.
+- **Cron reminders endpoint:** `POST /api/cron/reminders` must require `Authorization: Bearer $CRON_SECRET` and be idempotent (safe to retry, no duplicate reminders).
+- **DB access pattern:** UI components must not access Supabase directly for data. All DB reads/writes go through Route Handlers and server repos under `src/lib/server/db/**`.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 深挖 Next.js/Supabase/streaming 的边界细节
+[P] Party Mode — 多视角审视框架规则
+[C] Continue — 写入 project-context.md 并进入下一类（Testing Rules）
+
+Sat 27 Dec 2025 01:51:51 AEST	architect.agent.yaml	已保存 Framework-Specific Rules 到 _bmad-output/project-context.md。
+
+进入下一类：Testing Rules。
+
+由于当前项目代码尚未初始化（没有现成测试框架配置），我建议在 project-context 里先写“轻量但强约束”的测试规则：
+- 只为你新增/修改的逻辑写测试
+- 以单元测试为主（纯函数/mapper/validator/AI adapter）
+- 端点层优先用最小化的 integration 测试（请求/响应 envelope、stream 协议、auth 401/403、RLS 相关路径）
+
+在写草稿前确认 1 点：你希望 MVP 测试框架选哪个？
+A. Vitest
+B. Jest
+
+你回 A/B 后我给出 Testing Rules 英文草稿并提供 A/P/C。
+Sat 27 Dec 2025 01:52:52 AEST	architect.agent.yaml	收到：测试框架选 Jest。我已在线核对版本：jest 30.2.0（@jest/globals 30.2.0）。
+
+下面是我拟写的英文 Testing Rules 草稿（精简且可执行）：
+
+---
+
+### Testing Rules
+
+- **Framework:** Jest (`jest` `30.2.0`).
+- **Scope:** Add/adjust tests only for the code you change; don’t refactor unrelated areas just to improve test coverage.
+- **Unit tests first:** Prefer unit tests for pure logic:
+  - request/response mappers (snake_case ↔ camelCase)
+  - zod validators
+  - streaming protocol helpers (event framing)
+  - AI provider adapters (mock `fetch`)
+- **Minimal integration tests for Route Handlers:**
+  - verify the standard envelope `{ data, error }` for non-stream endpoints
+  - verify streaming endpoints emit `delta` then terminal `done` or `error`
+  - verify auth-required endpoints return `UNAUTHORIZED` when no session
+  - verify cron endpoint rejects missing/invalid `Authorization: Bearer <CRON_SECRET>`
+- **Determinism:** No network calls in tests; mock `fetch` and any Supabase client calls.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 补充更细的测试边界/目录布局
+[P] Party Mode — 多视角审视测试策略
+[C] Continue — 写入 project-context.md 并进入下一类（Code Quality & Style Rules）
+
+Sat 27 Dec 2025 01:53:42 AEST	architect.agent.yaml	已保存 Testing Rules 到 _bmad-output/project-context.md。
+
+进入下一类：Code Quality & Style Rules。
+
+你已选择：只用 ESLint、无 Prettier、ESM-only、JS-only。这一类我会把“会导致 PR 风格分叉”的点写成硬规则（文件命名/目录命名、API envelope、日志、以及禁止项）。
+
+下面是该类别的英文草稿：
+
+---
+
+### Code Quality & Style Rules
+
+- **Formatter:** Do not add Prettier. Use ESLint only.
+- **Imports:** Use `@/*` alias; avoid deep relative imports like `../../..`.
+- **File naming:**
+  - React components: `PascalCase.jsx`.
+  - Other modules: `camelCase.js`.
+  - Directories: `kebab-case/`.
+- **API response shape:** Non-stream endpoints must return `{ data, error }` envelope; never mix raw JSON responses.
+- **Streaming protocol:** Streaming endpoints must use `delta/done/error` events; never invent new event names without updating architecture + project-context.
+- **Logging:** Server logs must be structured JSON; never log secrets (`*_KEY`, `*_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`) or full JD text.
+- **No direct vendor calls from browser:** AI and privileged DB ops are server-only.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 补充更多质量门槛（例如必需的 lint 规则）
+[P] Party Mode — 多视角审视代码风格一致性
+[C] Continue — 写入 project-context.md 并进入下一类（Development Workflow Rules）
+
+Sat 27 Dec 2025 01:54:43 AEST	architect.agent.yaml	已保存 Code Quality & Style Rules 到 _bmad-output/project-context.md。
+
+进入下一类：Development Workflow Rules。
+
+在没有既有 repo 约定（branch/commit/CI）时，我建议 project-context 里只写两条对 AI 代理最有用的流程规则：
+- 任何新增端点/表/事件协议都要先更新 architecture.md / project-context.md
+- 任何涉及 secret / service role / RLS 的改动都要做最小化变更，并附带验证说明
+
+Sat 27 Dec 2025 01:55:24 AEST	architect.agent.yaml	已保存 Development Workflow Rules 到 _bmad-output/project-context.md。
+
+进入最后一类：Critical Don\"t-Miss Rules（最重要的禁区/坑点）。
+
+我会把我们架构里最关键的“禁止项/必须项”再浓缩一遍，确保 AI 代理不会：
+- 在客户端读 secrets
+- 绕过 Route Handlers
+- 破坏 RLS 或用错 service role
+- 产生不一致的 stream 协议/端点
+- 让 cron 无鉴权
+
+英文草稿如下：
+
+---
+
+### Critical Don\"t-Miss Rules
+
+- **Never leak secrets:** No server-only env vars in client code. Never log secrets.
+- **No direct DB access from UI:** UI must not call Supabase for data reads/writes; all data ops go through Route Handlers.
+- **RLS first:** Every user-owned table must have RLS enabled and `user_id = auth.uid()` enforced.
+- **Service role is for background/admin only:** Only cron/admin routes may use service role. Never expose it.
+- **Canonical streaming endpoint:** Use `POST /api/cover-letter/stream` only. Stream events must be `delta`, `done`, `error`.
+- **Cron must be authenticated:** `POST /api/cron/reminders` must require `Authorization: Bearer $CRON_SECRET`.
+- **DB/API naming boundary:** DB `snake_case` ↔ API/UI `camelCase` must be mapped at the server boundary.
+
+---
+
+你想怎么做？
+[A] Advanced Elicitation — 再挖一轮遗漏的坑点
+[P] Party Mode — 多视角审视禁区
+[C] Continue — 写入 project-context.md 并进入 Step 3（Complete）
+
+Sat 27 Dec 2025 01:57:43 AEST	architect.agent.yaml	✅ Project context 已生成完成。
+
+- 文件：_bmad-output/project-context.md（status: complete, optimized_for_llm: true, rule_count: 50）
+- 用法：后续任何 AI 代理在写代码前，先读 _bmad-output/project-context.md + _bmad-output/architecture.md 并严格遵守。
+
+下一步你想做哪个？
+1) 继续 BMM：create-epics-and-stories
+2) 直接进入实现（先升级 Node >= 20.9.0，再执行 create-next-app 初始化）
+3) 运行 implementation-readiness 检查
+
+Sat 27 Dec 2025 01:59:30 AEST	pm.agent.yaml	你好 ggbb，我是 John（产品经理）。我们先从“为什么(WHY)”出发，明确目标与约束。\n\n请选择一个菜单项（输入编号或命令）：\n1) [M] Redisplay Menu Options (*menu)\n2) Get workflow status or initialize a workflow if not already done (optional) (*workflow-status)\n3) Create Product Requirements Document (PRD) (Required for BMad Method flow) (*create-prd)\n4) Create Epics and User Stories from PRD (Required for BMad Method flow AFTER the Architecture is completed) (*create-epics-and-stories)\n5) Validate PRD, UX, Architecture, Epics and stories aligned (Optional but recommended before development) (*implementation-readiness)\n6) Course Correction Analysis (optional during implementation when things go off track) (*correct-course)\n7) Bring the whole team in to chat with other expert agents from the party (*party-mode)\n8) Advanced elicitation techniques to challenge the LLM to get better results (*advanced-elicitation)\n9) [D] Dismiss Agent (*dismiss)
+Sat 27 Dec 2025 02:01:51 AEST	pm.agent.yaml	我已在规划产物目录里找到这些文档：
+- _bmad-output/project-planning-artifacts/product-brief-job-tracker-2025-12-26.md
+- _bmad-output/project-planning-artifacts/ux-design-specification.md
+
+我没有找到 PRD 或 Architecture 文档（按本工作流要求它们是必需输入）。
+
+请确认：还有其他相关文档吗，或以上就是全部？[Yes/No]
+Sat 27 Dec 2025 02:03:32 AEST	pm.agent.yaml	我已定位到你提供的文档，并补全了发现清单：
+- _bmad-output/prd.md
+- _bmad-output/architecture.md
+- _bmad-output/project-context.md
+- _bmad-output/project-planning-artifacts/product-brief-job-tracker-2025-12-26.md
+- _bmad-output/project-planning-artifacts/ux-design-specification.md
+
+请确认：还有其他需要纳入拆分的文档吗，还是以上就是全部？[Yes/No]
+Sat 27 Dec 2025 02:04:08 AEST	pm.agent.yaml	收到：你还有其他文档需要纳入。
+
+请把“其他文档”的绝对路径（或相对本仓库路径）逐条发我，并给每个文档一句话说明它包含什么（例如：需求补充/约束、API契约、数据模型、风险、里程碑、竞品研究等）。
+
+我拿到路径后会把它们加入 inputDocuments 清单，然后再请你确认一次是否“全部齐了”。
+Sat 27 Dec 2025 02:08:19 AEST	pm.agent.yaml	我已完成 Step 01 的需求提取，并已写入：_bmad-output/project-planning-artifacts/epics.md
+
+功能需求（FR）：共 36 条。示例：
+- FR1 账号创建/登录
+- FR4 求职偏好配置（地点/签证/关键词等）
+- FR6 粘贴职位链接创建申请
+- FR13 从 JD 提取职责与要求
+- FR25 基于确认映射生成 Cover Letter 草稿
+是否有遗漏或表述需要调整？
+
+非功能需求（NFR）：共 9 条（性能/可靠性/安全与隐私/可访问性）。关键点包括：<2 秒核心非 AI 操作；AI 操作需可重试且不阻塞；RLS 用户隔离；账号删除硬删除；可访问性基线。
+是否有额外约束（例如合规、数据保留期、日志脱敏等）？
+
+额外要求（架构/UX/项目上下文）：已汇总如“选用 create-next-app --js + shadcn/ui”“Supabase Magic Link + RLS + service role 仅服务端”“AI 仅服务端 fetch + 流式输出”“Vercel Cron + CRON_SECRET 且幂等”“桌面优先/移动端 MVP 之外/无死路恢复路径/可访问性基线”“仅 JavaScript、Next 16.1.1、Node >=20.9”等。
+这些是否准确、完整？
+
+**Confirm the Requirements are complete and correct to [C] continue:**
+Sat 27 Dec 2025 02:09:53 AEST	pm.agent.yaml	进入 Step 02（设计 Epic 列表）。先对齐原则：Epic 必须以“用户价值/可交付结果”来组织；每个 Epic 需要独立可用，不能依赖未来 Epic 才能工作（后续 Epic 可以在前面基础上增强）。
+
+在我给出第一版 epics_list 之前，需要你补一句“优先级/范围”输入（避免我替你拍板）：
+1) MVP 必须包含哪些（可多选/可排除）：
+   - 跟进提醒（FR34，Vercel Cron）
+   - 面试准备包（FR35–FR36）
+   - high-fit 评估偏好/打分（FR4）
+2) 你希望 Epic 粒度偏“少而大”(4–6 个) 还是“多而小”(7–10 个)？
+3) 如果只能先交付一个最小闭环，你希望是：
+   A 贴链接→手动/自动 JD→提取需求→确认映射→生成 cover letter→保存最终稿（FR6–FR29 为主）
+   B 先把 Evidence Library 做强（FR17–FR20）
+   C 先把 Tracking/列表/过滤/时间线做强（FR30–FR33）
+
+你按 1/2/3 回复即可。
+Sat 27 Dec 2025 02:15:24 AEST	pm.agent.yaml	已按你批准的结构更新 epics.md：把 FR4/FR5/FR34/FR35/FR36 标为 Non-MVP，并补全了 FR Coverage Map + Epic List。
+
+现在按 Step 02 规则需要你选择下一步操作：
+**Select an Option:** [A] Advanced Elicitation [P] Party Mode [C] Continue
+Sat 27 Dec 2025 02:17:27 AEST	pm.agent.yaml	好的，我们进入 Step 03：逐个 Epic 生成可实现的 Stories（每个 story 单人可完成、且不依赖未来 story）。
+
+先从 Epic 1 开始：
+## Epic 1: Account & Settings (Foundation)
+目标：用户可通过 Supabase Magic Link 登录进入私有工作区，形成后续所有功能的安全与会话基础；偏好设置（高匹配/生成偏好）标为 Non-MVP。
+FRs：FR1, FR2, FR3, FR4(非MVP), FR5(非MVP)
+相关 NFR/约束：NFR-S1 用户隔离；RLS 所有用户表；会话需在刷新后仍可用；错误可重试且不丢状态；仅服务端持有 service role。
+
+我建议把 Epic 1 拆成 4 个 stories：
+1.1（MVP）Magic Link 登录 + 受保护工作区入口（未登录重定向到登录页；登录成功进入应用壳）
+1.2（MVP）退出登录 + 会话边界（退出后所有受保护页面不可访问；刷新/重新打开仍保持正确状态）
+1.3（Non-MVP）配置“high-fit 评估偏好”（FR4）并持久化到用户设置
+1.4（Non-MVP）配置“生成偏好”（FR5）并持久化到用户设置
+
+确认一下：你是否批准用这个 story 划分来写入文档？
+- 如果你更想把 1.3/1.4 合并成一个“用户设置”story 也可以。
+- 另外，Epic 1 的登录方式我默认只做 Email Magic Link（OTP），不做密码/第三方 OAuth，对吗？
+
+请回复：批准/调整（并说明怎么改）。
+Sat 27 Dec 2025 02:19:43 AEST	pm.agent.yaml	Epic 1 的 4 个 Stories（含 Non-MVP 的 1.3/1.4）已按模板写入：_bmad-output/project-planning-artifacts/epics.md。
+
+请确认：Epic 1 的故事与验收标准是否准确、可实现、范围合适？
+- 若需要改动，请指出 story 编号与修改点。
+- 若确认无误，请回复“继续”，我将进入 Epic 2（Application Inbox & Traceability）并按同样方式产出 stories。
+Sat 27 Dec 2025 02:21:30 AEST	pm.agent.yaml	进入 Epic 2（Application Inbox & Traceability）。我先给一个“少而大”的 story 划分草案，确保 Epic 2 不依赖 Epic 3 的贴链接能力：
+
+Epic 2 FRs：FR30–FR33（MVP），FR34（非MVP）。
+
+建议拆成 5 个 stories：
+2.1（MVP）创建/编辑 Application 记录（company/role/link/notes/status/applied date），并做用户隔离（RLS）
+2.2（MVP）Application 列表（inbox）+ 查看详情页（可从列表进入某条申请）
+2.3（MVP）搜索与过滤（按 status/company/role/date/source；source 无则 unknown，后续 Epic 3 可补全）
+2.4（MVP）时间线/历史（至少记录状态变更与关键字段变更，支撑 traceability）
+2.5（非MVP）7 天无回复提醒队列（FR34：标记/提示；后续再接 Vercel Cron）
+
+在我把这些写成完整故事与验收标准前，有 3 个关键口径要你拍板：
+1) MVP 的 status 枚举你想要哪些？我建议：Draft / Applied / Interview / Offer / Rejected / Withdrawn。
+2) applied date：是否仅在 status=Applied（或之后）时必填？还是一律必填？
+3) “时间线/历史”你希望最低保证是什么：仅 status history + notes；还是也要记录重要字段（company/role/link）变更？
+
+你回复：批准/调整 + 1/2/3 的答案，我就开始写 Epic 2 的故事到 epics.md。
+Sat 27 Dec 2025 02:24:38 AEST	pm.agent.yaml	基于你的选择（status 枚举用我建议的那组；applied date 在 Applied 之后必填；时间线也记录 company/role/link 等重要字段变更），我将按这 5 个 stories 来写 Epic 2：2.1 记录创建/编辑+RLS；2.2 列表+详情；2.3 搜索过滤；2.4 时间线/历史；2.5（非MVP）7天无回复提醒。
+
+请回复“批准”我就把 Epic 2 的完整 stories + 验收标准写入 epics.md。
+Sat 27 Dec 2025 02:26:08 AEST	pm.agent.yaml	Epic 2 的 5 个 Stories（含 Non-MVP 的 2.5）已按模板写入：_bmad-output/project-planning-artifacts/epics.md。
+
+请确认 Epic 2 是否准确、范围合适、验收标准可测试：
+- Status 枚举：Draft / Applied / Interview / Offer / Rejected / Withdrawn
+- applied date：仅在 Applied（及之后）必填
+- 时间线：记录 status 变更 + company/role/link 等重要字段变更（含 before/after）
+
+若需要调整，请指出 story 编号与修改点；若确认无误，请回复“继续”，我将进入 Epic 3（Job Capture & JD Snapshot）。
+Sat 27 Dec 2025 02:30:22 AEST	pm.agent.yaml	进入 Epic 3（Job Capture & JD Snapshot）。WHY：你要把“看到一个职位链接”快速变成“有可用 JD 快照的申请记录”，且失败时不回退到手工表格。
+
+我先给“少而大”的 story 划分草案（FR6–FR12），并提 3 个口径让你拍板：
+
+建议拆成 4 个 stories：
+3.1（MVP）Paste Job URL → 创建申请 + 识别来源（Seek/LinkedIn/company/unknown）+ 启动“尽力解析”流程
+3.2（MVP）解析结果可审阅/可编辑：公司/职位/地点/JD 文本（若有）都能手动修正并保存
+3.3（MVP）JD 快照兜底：解析失败或不完整时，用户可粘贴 JD 文本并保存为 snapshot（后续 Epic 4 依赖此 snapshot）
+3.4（MVP）重复检测：同 URL 或同 company+role 给出明确提示，允许用户选择“继续创建/返回修改”
+
+需要你确认的 3 个关键范围（决定 3.1/3.3 的实现力度）：
+1) MVP 的“尽力解析”到什么程度？
+   A 只做来源识别 + 预填（title/company/location）能拿到就拿，JD 文本主要靠手动粘贴
+   B 也要尝试自动抓取/提取 JD 全文（允许失败，但会增加工作量/不稳定性）
+2) MVP 要优先支持哪些来源的解析？
+   A 先只把 company career page 视为 unknown（不做解析），Seek/LinkedIn 做基础预填
+   B 只支持 Seek（最小可控），其他都走手动粘贴
+3) 去重提示策略：
+   - 同 URL：强提示（默认不创建/需确认继续）
+   - 同 company+role：弱提示（可继续）
+   这样可以吗？
+
+你回复 1/2/3 的选择 + “批准/调整”，我再把 Epic 3 的完整 stories + 验收标准写入 epics.md。
+Sat 27 Dec 2025 02:39:01 AEST	pm.agent.yaml	Epic 3 的 4 个 Stories 已按你选择的范围写入：_bmad-output/project-planning-artifacts/epics.md
+- 解析范围：选择 B（Seek/LinkedIn 尝试尽力自动提取 JD 全文，允许失败但提供“Paste JD”兜底）
+- 来源优先：选择 A（Seek/LinkedIn 做基础支持；company page 视为 company/unknown，不强做解析）
+- 去重策略：同 URL 强提示需确认；同 company+role 弱提示可继续
+
+请确认 Epic 3 是否准确、范围可控、验收标准可测试。
+若确认无误，请回复“继续”，我将进入 Epic 4（JD Requirements Extraction）。
+Sat 27 Dec 2025 02:42:45 AEST	pm.agent.yaml	进入 Epic 4（JD Requirements Extraction，FR13–FR16；FR35–36 非MVP）。这一步的 WHY：把 JD snapshot 变成“可编辑、可复用、可驱动映射”的 requirements 清单。
+
+我建议 Epic 4 拆成 4 个 stories（少而大，且不依赖后续 Epic）：
+4.1（MVP）从 JD snapshot 触发提取：生成 responsibilities + requirements/skills 初稿，并保存到 application
+4.2（MVP）可编辑的 requirements 工作区：用户可增删改、合并、标记关键项，并保存
+4.3（MVP）低信号 JD 处理：检测“太泛/太长/噪声高”，提示用户选择关键职责作为驱动项
+4.4（Non-MVP）面试准备包与笔记（FR35–FR36）：基于 requirements + 公司上下文生成 Q&A，并保存笔记
+
+两个口径要你拍板（决定 4.1 的输入输出结构）：
+1) 你希望提取结果分两类存储吗？
+   A 分开：Responsibilities 列表 + Requirements/Skills 列表（更贴合 PRD）
+   B 合并：统一叫 Requirements（每条标注 type=responsibility/skill）
+2) MVP 是否需要“每条 requirement 有置信度/来源句子引用”？
+   A 不需要（先快）
+   B 需要（更可解释，但更复杂）
+
+你回复 1/2 的选择 + “批准/调整”，我就把 Epic 4 的完整 stories + 验收标准写入 epics.md。
+Sat 27 Dec 2025 02:44:09 AEST	pm.agent.yaml	已按你选择（1=A 分开存 responsibilities 与 requirements/skills；2=A 不做置信度/引用）把 Epic 4 的 4 个 Stories 写入：_bmad-output/project-planning-artifacts/epics.md。
+
+请确认 Epic 4 是否准确、范围合适、验收标准可测试。若确认无误，请回复“继续”，我将进入 Epic 5（Evidence Library & Mapping Workbench）。
+Sat 27 Dec 2025 02:44:58 AEST	pm.agent.yaml	收到，Epic 4 通过。进入 Epic 5（Evidence Library & Mapping Workbench，FR17–FR24）。WHY：你的差异化核心在“证据驱动”，所以要把项目经历沉淀成可检索的 bullets，并把 JD requirements 映射到这些 bullets 上，且能显式处理 uncovered。
+
+我先给“少而大”的 story 划分草案，然后问 3 个口径让你拍板：
+
+建议 Epic 5 拆成 5 个 stories：
+5.1（MVP）Projects/Experiences CRUD（FR17，RLS 用户隔离）
+5.2（MVP）Project Bullets CRUD（FR18：技能/职责/成果 bullets 归属到 project）
+5.3（MVP）Bullets 标签 + 搜索/过滤（FR19）
+5.4（MVP）系统提议“requirements → bullets”映射（FR21），生成可审阅的候选映射
+5.5（MVP）映射工作台：用户调整/确认映射、标记 uncovered，并保存为 application 的 confirmed mapping（FR22–FR24）
+
+需要你确认的 3 个关键口径：
+1) Bullet 的最小字段你希望是什么？我建议：title（可选）+ bullet text（必填，1–3 句）+ tags（可选）+ metrics/impact（可选）。是否要加“证据链接（GitHub/演示）”字段？
+2) tags 你倾向：A 自由标签（字符串） B 预置技能词表（更规范但更重）
+3) 5.4 的“映射提议”MVP 用哪种？A 规则/关键词匹配（快但弱） B AI 生成候选映射（更贴合产品卖点，但要做异步/可重试）
+
+你回复：对 5.1–5.5 是否批准 + 1/2/3 的选择，我再把 Epic 5 的完整 stories + 验收标准写入 epics.md。
+Sat 27 Dec 2025 02:47:03 AEST	pm.agent.yaml	Epic 5 的 5 个 Stories 已按你选择写入：_bmad-output/project-planning-artifacts/epics.md
+- bullet 字段：不加证据链接；tags 为自由标签
+- 映射提议（5.4）：MVP 用规则/关键词匹配（非 AI）
+
+请确认 Epic 5 是否准确、范围合适、验收标准可测试。若确认无误，请回复“继续”，我将进入 Epic 6（Cover Letter Drafting & Versioning）。
+Sat 27 Dec 2025 02:47:32 AEST	pm.agent.yaml	收到，Epic 5 通过。进入 Epic 6（Cover Letter Drafting & Versioning，FR25–FR29）。WHY：这是 A 闭环的最终产出，必须“可控、可追溯、可重复生成”。
+
+我先给“少而大”的 story 划分草案，然后问 2 个关键口径：
+
+建议 Epic 6 拆成 4 个 stories：
+6.1（MVP）基于 confirmed mapping + JD 生成 cover letter 草稿（可迭代约束：tone/keywords/emphasis），并保存草稿版本
+6.2（MVP）编辑与保存最终版本（final），可随时检索
+6.3（MVP）提交备注（submission notes）：记录提交渠道/使用的版本/备注
+6.4（MVP）生成失败/重试与不丢状态：生成失败不覆盖已有草稿；重试不要求重复输入；流式输出（与架构一致）
+
+需要你拍板的 2 个关键口径：
+1) 生成输出的“版本模型”你想要哪种？
+   A 仅保留：latest draft + final（最简单）
+   B 多版本：每次生成保存为 version（可回滚/对比，但更复杂）
+2) 你希望“final”是否允许再次生成覆盖？
+   A final 一旦保存可编辑，但新生成只产生 draft，不覆盖 final
+   B 允许把新生成直接覆盖 final（更快但风险高）
+
+你回复 1/2 的选择 + “批准/调整”，我就把 Epic 6 的完整 stories + 验收标准写入 epics.md。
+Sat 27 Dec 2025 02:49:59 AEST	pm.agent.yaml	已按你选择（1=A 仅 latest draft + final；2=B 允许再生成覆盖 final，但需要显式确认）把 Epic 6 的 Stories 写入：_bmad-output/project-planning-artifacts/epics.md。
+
+请确认 Epic 6 是否准确、范围合适、验收标准可测试。若确认无误，请回复“继续”，我将完成 Step 03 的收尾检查并进入 Step 03 的最终菜单。
+Sat 27 Dec 2025 02:51:24 AEST	pm.agent.yaml	Step 03 已完成内容生成并做了结构自检：
+- 共 6 个 Epics、26 个 Stories
+- FR1–FR36 均已覆盖
+- 文档中无残留 {{...}} 占位符
+
+现在进入 Step 03 的最终菜单：
+**Select an Option:** [A] Advanced Elicitation [P] Party Mode [C] Continue
+Sat 27 Dec 2025 02:53:02 AEST	pm.agent.yaml	Step 04 最终校验结果（目前未完全通过）：
+
+✅ 已通过：
+- FR1–FR36 均已在 FR Coverage Map 覆盖（未发现遗漏）
+- 6 个 Epic / 26 个 Story，文档无残留 {{...}} 占位符
+- Epic 结构按用户价值组织，且 Epic 2 不依赖 Epic 3 才能运作（source 可为 unknown）
+
+❌ 需要修正的 2 点（阻止我“完成工作流”）：
+1) 架构文档明确了 Starter Template（create-next-app --js + Tailwind + shadcn/ui）。按 Step 04 规则，Epic 1 Story 1 必须是“从 starter template 初始化项目”。目前 Story 1.1 是 Magic Link 登录，不符合该规则。
+2) Step 04 要求“每个 story 必须引用其实现的 FR”。目前 stories 没有显式写 **Implements: FRx**。
+
+另有一个小格式问题：FR Coverage Map 标题出现了重复一行（不影响内容，但我会顺手清理）。
+
+我建议的最小修复（不改范围，只补齐合规性）：
+- 新增 Story 1.1：Set up initial project from starter template（Next.js --js + Tailwind + shadcn/ui，基础 env/脚本/目录结构就绪）；并把现有 Epic 1 的 story 编号顺延为 1.2–1.5。
+- 给每个 story 加一行 **Implements:** FR...（例如 Story 2.1 Implements: FR30, FR31）
+- 去掉重复的 FR Coverage Map 标题
+
+你是否批准我按上述方式修改 epics.md？回复：批准/不批准（或说明你想怎么改）。
+Sat 27 Dec 2025 02:55:47 AEST	pm.agent.yaml	Step 04 最终校验已通过：
+- Epic 1 Story 1 已改为 Starter Template 初始化（符合架构要求）
+- 每个 story 已补充 **Implements:** 对应 FR（含 Non-MVP 标注）
+- FR1–FR36 覆盖完整，且无残留占位符
+
+All validations complete! [C] Complete Workflow
+Sat 27 Dec 2025 02:59:07 AEST	pm.agent.yaml	你说得对：我之前只完成了 create-epics-and-stories 工作流自身的输出与 stepsCompleted（写在 epics.md 里），但 BMM 的全局进度是记录在 _bmad-output/bmm-workflow-status.yaml 里，需要单独更新。
+
+我刚已把 workflow_status 里的 create-epics-and-stories 从 required 更新为 _bmad-output/project-planning-artifacts/epics.md。
+
+下一步按状态文件顺序将是 test-design（recommended），然后是 implementation-readiness（required）。
+Sat 27 Dec 2025 03:02:04 AEST	tea.agent.yaml	你好 ggbb，我是 Murat（测试架构师）。我会用风险/影响来做测试决策，优先消除会阻断发布的质量风险。
+
+请选择一个菜单项（输入编号或命令）：
+1) [M] Redisplay Menu Options (*menu)
+2) Initialize production-ready test framework architecture (*framework)
+3) Generate E2E tests first, before starting implementation (*atdd)
+4) Generate comprehensive test automation (*automate)
+5) Create comprehensive test scenarios (*test-design)
+6) Map requirements to tests and make quality gate decision (*trace)
+7) Validate non-functional requirements (*nfr-assess)
+8) Scaffold CI/CD quality pipeline (*ci)
+9) Review test quality using knowledge base and best practices (*test-review)
+10) Bring the whole team in (party mode) (*party-mode)
+11) Advanced elicitation techniques (*advanced-elicitation)
+12) [D] Dismiss Agent (*dismiss)
+Sat 27 Dec 2025 03:10:30 AEST	tea.agent.yaml	已按 test-design 工作流完成系统级测试设计并更新全局状态。
+
+- 输出文件：_bmad-output/test-design-system.md
+- 全局状态：_bmad-output/bmm-workflow-status.yaml 已将 test-design 更新为该文件路径
+- 模式判定：未发现 bmm-sprint-status.yaml 且 implementation-readiness=required → System-Level Mode
+
+接下来你要做哪个？
+1) *trace（把需求映射到测试并做质量门槛决策）
+2) *framework（初始化测试框架架构）
+3) *ci（搭 CI 质量流水线）
+4) 返回菜单（*menu）
+Sat 27 Dec 2025 03:12:18 AEST	architect.agent.yaml	你好 ggbb，我是 Winston（架构师）。
+
+菜单（回复编号或输入命令）：
+1) [M] Redisplay Menu Options — `*menu`
+2) Get workflow status or initialize a workflow if not already done (optional) — `*workflow-status`
+3) Create an Architecture Document to Guide Development of a PRD (required for BMad Method projects) — `*create-architecture`
+4) Validate PRD, UX, Architecture, Epics and stories aligned (Optional but recommended before development) — `*implementation-readiness`
+5) Create system architecture or technical diagram (Excalidraw) (Use any time you need a diagram) — `*create-excalidraw-diagram`
+6) Create data flow diagram (Excalidraw) (Use any time you need a diagram) — `*create-excalidraw-dataflow`
+7) Bring the whole team in to chat with other expert agents from the party — `*party-mode`
+8) Advanced elicitation techniques to challenge the LLM to get better results — `*advanced-elicitation`
+9) [D] Dismiss Agent — `*dismiss` 
+
+请告诉我你要选择的编号或命令。
+Sat 27 Dec 2025 03:15:23 AEST	architect.agent.yaml	开始 **Document Discovery** 来盘点项目文件。
+
+我将：
+1. 搜索所有必需文档（PRD、Architecture、Epics、UX）
+2. 识别是否存在分片（sharded）文档
+3. 标记任何重复（whole vs sharded）以便你裁决
+4. 展示清单供你确认
+
+## PRD Files Found
+
+**Whole Documents:**
+- `_bmad-output/prd.md` (24277 bytes, 2025-12-26 17:24)
+
+**Sharded Documents:**
+- 未发现
+
+## Architecture Files Found
+
+**Whole Documents:**
+- `_bmad-output/architecture.md` (32759 bytes, 2025-12-27 01:44)
+
+**Sharded Documents:**
+- 未发现
+
+## Epics & Stories Files Found
+
+**Whole Documents:**
+- `_bmad-output/project-planning-artifacts/epics.md` (41527 bytes, 2025-12-27 02:56)
+
+**Sharded Documents:**
+- 未发现
+
+## UX Design Files Found
+
+**Whole Documents:**
+- `_bmad-output/project-planning-artifacts/ux-design-specification.md` (31956 bytes, 2025-12-27 00:11)
+
+**Other UX artifacts (non-md):**
+- `_bmad-output/ux-design-directions.html`
+- `_bmad-output/ux-color-themes.html`
+
+**Sharded Documents:**
+- 未发现
+
+**Issues Found:**
+- 未发现 whole vs sharded 的重复冲突
+
+我已初始化报告文件：`_bmad-output/project-planning-artifacts/implementation-readiness-report-2025-12-27.md`
+
+**Ready to proceed?** 解决任何问题后输入 [C] Continue
+
+**Select an Option:** [C] Continue to File Validation
+Sat 27 Dec 2025 03:23:18 AEST	architect.agent.yaml	Implementation Readiness Assessment Complete。
+
+报告已生成：_bmad-output/project-planning-artifacts/implementation-readiness-report-2025-12-27.md
+
+本次评估发现 5 个需要关注的问题（其中 2 个为主要问题）。
+
+你想我接下来做哪一项：
+1) 把“Final 版本不可覆盖 / 版本化提交”的决策落到 PRD+epics 的具体修改建议
+2) 为“Preview Draft（Ungrounded）”补齐一个 MVP story（或帮你把 UX 里该模式删掉/降级）
+Sat 27 Dec 2025 03:26:49 AEST	architect.agent.yaml	已按你的选择把“提交版不可覆盖/版本化提交”落到 PRD + Epics：
+
+- `_bmad-output/prd.md`: 更新 FR27–FR29，明确 submitted cover letter 版本不可变、可保留历史、多次提交；submission notes 绑定到具体提交版本。
+- `_bmad-output/project-planning-artifacts/epics.md`: 改写 Story 6.3/6.4：再生成只替换 latest draft，不会影响已提交版本；允许新增提交版本保留历史；notes 与提交版本关联。
+- `_bmad-output/project-planning-artifacts/implementation-readiness-report-2025-12-27.md`: 将该项标记为已解决（RESOLVED）。
+
+接下来要不要我处理选项 2（补齐/降级 Preview Draft Ungrounded）？
+Sat 27 Dec 2025 03:30:27 AEST	architect.agent.yaml	已处理选项 2（Preview Draft Ungrounded 对齐）：
+- 已在 UX 中将 Preview Draft 明确标注为 Post-MVP：`_bmad-output/project-planning-artifacts/ux-design-specification.md`
+- 已在 Epics 中新增对应故事 Story 6.5（Non-MVP）：`_bmad-output/project-planning-artifacts/epics.md`
+- 已在 readiness 报告里把该项标记为已解决，并将总体状态更新为 READY：`_bmad-output/project-planning-artifacts/implementation-readiness-report-2025-12-27.md`
+
+你希望 Preview Draft 其实是 MVP 吗？如果是，我可以把 UX/Story 6.5 的 Post-MVP/Non-MVP 标记移除，并补齐与现有 Story 6.1（mapping-first）不冲突的 AC。
+Sat 27 Dec 2025 03:31:27 AEST	architect.agent.yaml	收到：Preview Draft 不是 MVP。
+
+当前文档已一致：UX 标注 Post-MVP，Epics 里 Story 6.5 标注 Non-MVP，readiness 报告已更新为 READY。
+
+如果你愿意，我可以下一步把 Story 3.4 的 duplicate detection 规则补成可测试的匹配规范（大小写/空白/标点、是否考虑 location、URL 规范化等）。
+Sat 27 Dec 2025 03:36:34 AEST	architect.agent.yaml	你说得对：我之前只生成了 readiness report，但没有把 BMM workflow status 里的 `implementation-readiness` 标记成已完成。
+
+我已更新：`_bmad-output/bmm-workflow-status.yaml`，现在 `implementation-readiness` 指向 ` _bmad-output/project-planning-artifacts/implementation-readiness-report-2025-12-27.md`。
+Sat 27 Dec 2025 03:38:47 AEST	sm.agent.yaml	你好 ggbb，我是 Bob（Scrum Master）。已加载 _bmad/bmm/config.yaml；已检测到 _bmad-output/project-context.md（将作为执行基准）。
+
+菜单（输入编号或命令）：
+1) *menu - [M] 重新显示菜单选项
+2) *sprint-planning - 从 epic 文件生成/重新生成 sprint-status.yaml（创建 Epics+Stories 后必做）
+3) *create-story - 创建 Story（为开发准备故事，必做）
+4) *epic-retrospective - 史诗完成后复盘（可选）
+5) *correct-course - 偏离轨道时纠偏
+6) *party-mode - 邀请全队其他专家 agent 参与
+7) *advanced-elicitation - 高级引导技巧
+8) *dismiss - [D] 退出/解散 agent
+
+你要执行哪一项？
+Sat 27 Dec 2025 03:39:21 AEST	sm.agent.yaml	TTS self-test
+Sat 27 Dec 2025 03:39:31 AEST	sm.agent.yaml	你好 ggbb，我是 Bob（Scrum Master）。已加载 _bmad/bmm/config.yaml；已检测到 _bmad-output/project-context.md（将作为执行基准）。\n\n菜单（输入编号或命令）：\n1) *menu - [M] 重新显示菜单选项\n2) *sprint-planning - 从 epic 文件生成/重新生成 sprint-status.yaml（创建 Epics+Stories 后必做）\n3) *create-story - 创建 Story（为开发准备故事，必做）\n4) *epic-retrospective - 史诗完成后复盘（可选）\n5) *correct-course - 偏离轨道时纠偏\n6) *party-mode - 邀请全队其他专家 agent 参与\n7) *advanced-elicitation - 高级引导技巧\n8) *dismiss - [D] 退出/解散 agent\n\n你要执行哪一项？
+Sat 27 Dec 2025 03:44:15 AEST	sm.agent.yaml	已按要求加载并解析： 与 。
+
+在执行生成  前，有 1 个必填变量仍未知：（会写入 sprint-status 元数据，供后续解析/对接用）。
+
+请回复你想用的 ：
+- 建议默认：
+- 或你常用的短键（如  / ）
+
+你要用哪个？
+Sat 27 Dec 2025 03:44:48 AEST	sm.agent.yaml	已按要求加载并解析：`_bmad/core/tasks/workflow.xml` 与 `_bmad/bmm/workflows/4-implementation/sprint-planning/workflow.yaml`。
+
+在执行生成 `sprint-status.yaml` 前，有 1 个必填变量仍未知：`project_key`（会写入 sprint-status 元数据，供后续解析/对接用）。
+
+请回复你想用的 `project_key`：
+- 建议默认：`job-tracker`
+- 或你常用的短键（如 `JT` / `jira-1234`）
+
+你要用哪个？
+Sat 27 Dec 2025 03:59:32 AEST	sm.agent.yaml	Sprint Planning 已完成。
+
+已生成文件：`_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+统计：
+- Total Epics: 6
+- Total Stories: 28
+- Epics In Progress: 0
+- Stories Completed: 0
+
+说明：本次在 `implementation_artifacts` 下未发现任何 `*epic*.md`（discover_inputs 为 0 命中），已改用 `_bmad-output/project-planning-artifacts/epics.md` 作为权威来源提取 epics/stories；且当前未发现任何 `{story-key}.md` 故所有 story 维持 `backlog`。
+
+下一步：你可以从 `*create-story` 开始创建第一个 story 文件，然后重新运行 `*sprint-planning` 自动将其提升到至少 `ready-for-dev`。
+Sat 27 Dec 2025 04:03:30 AEST	sm.agent.yaml	已运行 workflow-status（interactive）。我将展示当前进度与下一步选项，请你回复 1-5。
+Sat 27 Dec 2025 04:04:33 AEST	sm.agent.yaml	你选择了 4：更新工作流状态。
+
+请选择要更新的类型：
+1) 标记为 completed（需要提供 output 文件路径）
+2) 标记为 skipped
+
+请回复 1 或 2。
+Sat 27 Dec 2025 04:06:04 AEST	sm.agent.yaml	收到：你要更新 workflow status 文件里的 `sprint-planning`。
+
+我将按“completed”处理，并把它的状态值写成输出文件路径（只写路径，不加其它文字）。
+
+请确认 output 文件路径是这个吗？
+`_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+回复：`y` 确认，或直接粘贴你要用的路径。
+Sat 27 Dec 2025 04:07:02 AEST	sm.agent.yaml	✅ 已更新 `sprint-planning` 为 completed：`_bmad-output/implementation-artifacts/sprint-status.yaml`（已写入 `_bmad-output/bmm-workflow-status.yaml`）。
+
+接下来你要做什么？
+1) 查看更新后的完整状态
+2) 进入下一工作流（已无后续；可选：`validate-architecture`）
+3) 退出
+Sat 27 Dec 2025 04:07:22 AEST	sm.agent.yaml	已退出 workflow-status。需要再次查看菜单请输入 `*menu`，或随时输入 `*dismiss` 解散我。
+Sat 27 Dec 2025 04:08:00 AEST	sm.agent.yaml	你好 ggbb，我是 Bob（Scrum Master）。已加载 `_bmad/bmm/config.yaml`；已检测到 `_bmad-output/project-context.md`（将作为执行基准）。
+
+菜单（输入编号或命令）：
+1) *menu - [M] 重新显示菜单选项
+2) *sprint-planning - 从 epic 文件生成/重新生成 sprint-status.yaml（创建 Epics+Stories 后必做）
+3) *create-story - 创建 Story（为开发准备故事，必做）
+4) *epic-retrospective - 史诗完成后复盘（可选）
+5) *correct-course - 偏离轨道时纠偏
+6) *party-mode - 邀请全队其他专家 agent 参与
+7) *advanced-elicitation - 高级引导技巧
+8) *dismiss - [D] 退出/解散 agent
+
+你要执行哪一项？
+Sat 27 Dec 2025 04:18:40 AEST	sm.agent.yaml	🎯 已完成：为你自动选取并创建了第一个 backlog story（Story 1.1）。
+
+Story Details:
+- Story ID: 1.1
+- Story Key: 1-1-set-up-initial-project-from-starter-template
+- File: _bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md
+- Status: ready-for-dev（并已同步更新 _bmad-output/implementation-artifacts/sprint-status.yaml）
+
+Validation Report:
+- _bmad-output/implementation-artifacts/validation-report-2025-12-26T18-16-55Z.md
+
+下一步：
+1) 交给 Dev 执行该 story（dev-story / 实现）
+2) 继续 *create-story 生成下一个 backlog story
+3) *menu 查看菜单
+Sat 27 Dec 2025 04:19:12 AEST	sm.agent.yaml	菜单（输入编号或命令）：
+1) *menu - [M] 重新显示菜单选项
+2) *sprint-planning - 从 epic 文件生成/重新生成 sprint-status.yaml（创建 Epics+Stories 后必做）
+3) *create-story - 创建 Story（为开发准备故事，必做）
+4) *epic-retrospective - 史诗完成后复盘（可选）
+5) *correct-course - 偏离轨道时纠偏
+6) *party-mode - 邀请全队其他专家 agent 参与
+7) *advanced-elicitation - 高级引导技巧
+8) *dismiss - [D] 退出/解散 agent
+
+你要执行哪一项？
+Sat 27 Dec 2025 04:19:29 AEST	sm.agent.yaml	已解散。我将停止以 Scrum Master 角色响应。
+Sat 27 Dec 2025 19:21:32 AEST	pm.agent.yaml	你好 ggbb，我是 John（产品经理）。我将用中文沟通。请选择一个菜单项（输入编号或命令）：
+1) [M] Redisplay Menu Options  cmd=*menu
+2) Get workflow status or initialize a workflow if not already done (optional)  cmd=*workflow-status
+3) Create Product Requirements Document (PRD) (Required for BMad Method flow)  cmd=*create-prd
+4) Create Epics and User Stories from PRD (Required for BMad Method flow AFTER the Architecture is completed)  cmd=*create-epics-and-stories
+5) Validate PRD, UX, Architecture, Epics and stories aligned (Optional but recommended before development)  cmd=*implementation-readiness
+6) Course Correction Analysis (optional during implementation when things go off track)  cmd=*correct-course
+7) Bring the whole team in to chat with other expert agents from the party  cmd=*party-mode
+8) Advanced elicitation techniques to challenge the LLM to get better results  cmd=*advanced-elicitation
+9) [D] Dismiss Agent  cmd=*dismiss
+Sat 27 Dec 2025 19:22:31 AEST	pm.agent.yaml	未识别该输入（不匹配当前菜单命令）。如果你想切换到 Scrum Master（sm）代理，请先选择 9) *dismiss 结束当前 PM 代理，然后再发送你的 sm 激活请求；或直接回复：9 或 *dismiss。
+Sat 27 Dec 2025 19:22:59 AEST	pm.agent.yaml	已解散 PM 代理（John）。你现在可以发送 sm 代理的激活请求，或告诉我你要我接下来做什么。
+Sat 27 Dec 2025 19:23:51 AEST	sm.agent.yaml	你好 ggbb，我是 Bob（Scrum Master）。我将用中文沟通。
+已发现并将遵循：_bmad-output/project-context.md。
+请选择一个菜单项（输入编号或命令）：
+1) [M] Redisplay Menu Options  cmd=*menu
+2) Generate or re-generate sprint-status.yaml from epic files  cmd=*sprint-planning
+3) Create Story（将以 *yolo 模式执行）  cmd=*create-story
+4) Facilitate team retrospective after an epic is completed  cmd=*epic-retrospective
+5) Execute correct-course task  cmd=*correct-course
+6) Bring the whole team in to chat with other expert agents from the party  cmd=*party-mode
+7) Advanced elicitation techniques to challenge the LLM to get better results  cmd=*advanced-elicitation
+8) [D] Dismiss Agent  cmd=*dismiss
+Sat 27 Dec 2025 19:25:05 AEST	dev.agent.yaml	你好 ggbb\! 我是 Amelia,开发者代理。配置加载成功\!请选择一个菜单选项来开始。
+Sat 27 Dec 2025 19:29:10 AEST	dev.agent.yaml	发现关键问题\!这个故事还没有实施,无法进行代码审查。请选择是退出、继续审查故事规格,还是选择其他故事。
+Sat 27 Dec 2025 19:30:12 AEST	dev.agent.yaml	代码审查已退出。故事尚未实施,建议先运行开发故事工作流。
+Sat 27 Dec 2025 19:33:03 AEST	sm.agent.yaml	✅ 已创建并准备开发：Story 1.2（Magic Link Sign-In and Protected Workspace）。
+- Story 文件：_bmad-output/implementation-artifacts/1-2-magic-link-sign-in-and-protected-workspace.md
+- Sprint 状态已更新：_bmad-output/implementation-artifacts/sprint-status.yaml（epic-1=in-progress，1-2=ready-for-dev）
+- 验证报告：_bmad-output/implementation-artifacts/validation-report-2025-12-27T09-31-03Z.md
+
+下一步：请先完成/确认 Story 1.1 生成了 ./job-tracker/ 应用目录，然后开发按该 Story 文件逐项实现并手工对照 AC 验收。
+Sat 27 Dec 2025 19:56:04 AEST	dev.agent.yaml	你好 ggbb。我是 Amelia（Developer Agent）。请选择菜单编号或输入命令：
+1) [M] Redisplay Menu Options (*menu)
+2) [DS] Execute Dev Story workflow (*DS / dev-story)
+3) [CR] Perform clean context code review (*CR / code-review)
+4) [PM] Party-mode team chat (*PM / party-mode)
+5) [D] Dismiss Agent (*dismiss)
+Sat 27 Dec 2025 19:56:32 AEST	sm.agent.yaml	✅ 已创建下一条 Story：1-3-sign-out-and-session-boundary，并标记为 ready-for-dev。
+- Story 文件：_bmad-output/implementation-artifacts/1-3-sign-out-and-session-boundary.md
+- Sprint 状态已更新：_bmad-output/implementation-artifacts/sprint-status.yaml（1-3=ready-for-dev）
+- 验证报告：_bmad-output/implementation-artifacts/validation-report-2025-12-27T09-51-05Z.md
+
+下一步：开发按 Story 文件实现后，把该 Story 状态推进到 in-progress/review/done。需要我继续创建下一条 Story（1-4）就再输入 *create-story。
+Sat 27 Dec 2025 19:57:26 AEST	dev.agent.yaml	请选择要审查的 Story 文件（输入 1/2/3 或直接粘贴路径）：
+1) _bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md
+2) _bmad-output/implementation-artifacts/1-2-magic-link-sign-in-and-protected-workspace.md
+3) _bmad-output/implementation-artifacts/1-3-sign-out-and-session-boundary.md
+Sat 27 Dec 2025 20:00:24 AEST	sm.agent.yaml	✅ 已创建下一条 Story：1-4-non-mvp-high-fit-preferences-settings，并标记为 ready-for-dev。
+- Story 文件：_bmad-output/implementation-artifacts/1-4-non-mvp-high-fit-preferences-settings.md
+- Sprint 状态已更新：_bmad-output/implementation-artifacts/sprint-status.yaml（1-4=ready-for-dev）
+- 验证报告：_bmad-output/implementation-artifacts/validation-report-2025-12-27T09-58-49Z.md
+
+如需继续创建 1-5（generation preferences），再输入 *create-story。
+Sat 27 Dec 2025 20:02:29 AEST	sm.agent.yaml	✅ 已创建下一条 Story：1-5-non-mvp-generation-preferences-settings，并标记为 ready-for-dev。
+- Story 文件：_bmad-output/implementation-artifacts/1-5-non-mvp-generation-preferences-settings.md
+- Sprint 状态已更新：_bmad-output/implementation-artifacts/sprint-status.yaml（1-5=ready-for-dev）
+- 验证报告：_bmad-output/implementation-artifacts/validation-report-2025-12-27T10-01-53Z.md
+
+下一条 backlog 是 Epic 2 的 2-1（create/edit application records）。需要我继续创建就再输入 *create-story。
+Sat 27 Dec 2025 20:03:22 AEST	dev.agent.yaml	**🔥 CODE REVIEW FINDINGS, ggbb!**
+
+**Story:** _bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md
+**Git vs Story Discrepancies:** 3 found
+**Issues Found:** 3 High, 3 Medium, 2 Low
+
+## 🔴 HIGH ISSUES
+- AC3 / Build+Lint 不可复现：当前环境 Node v16.16.0 导致 `npm run build` 直接失败（Next 要求 >=20.9.0），`npm run lint` 也因 Node 缺少 structuredClone 崩溃；但故事声称 Node v22.12.0 且 build+lint 已通过（_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md:115-122）。
+- 超范围依赖：故事明确禁止提前引入 Supabase（_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md:41-43,82），但 `job-tracker/package.json` 已包含 `@supabase/ssr`/`@supabase/supabase-js`（job-tracker/package.json:13-14）。
+- Git 与 Story File List 严重不一致：git 目前有 20 个 tracked 删除 + 15 个 untracked（无 staged），Story 的 File List 未记录这些删除，且核心变更多为 untracked，导致“完成”不可审计。
+
+## 🟡 MEDIUM ISSUES
+- `lint` 脚本用 `eslint` 而非 `next lint`（job-tracker/package.json:9）；可能偏离 Next 默认 lint 行为/集成检查。
+- 潜在 lint 问题：`job-tracker/src/components/ui/button.jsx` 引入 `React` 但未使用（job-tracker/src/components/ui/button.jsx:1），且格式不一致；一旦 Node 升级后 ESLint 真跑起来，可能会报错。
+- 默认元数据未改：`job-tracker/src/app/layout.js` 仍是 “Create Next App”（job-tracker/src/app/layout.js:14-17），与 “Job Tracker” 命名不一致。
+
+## 🟢 LOW ISSUES
+- 根目录出现未忽略的 `.DS_Store`（git status 显示 untracked）；建议在 repo 根 `.gitignore` 里忽略。
+- Story File List 用目录项（`job-tracker/`, `job-tracker/public/`）降低可追溯性（_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md:126,139）。
+
+现在你要我怎么处理？
+1) 自动修复所有 HIGH+MEDIUM（会改代码/故事文件/可能改 gitignore/增加 Node 版本钉死）
+2) 只在 Story 里加待办 action items（不改代码）
+3) 先展开某一条问题细节（告诉我 issue 编号或标题）
+Sat 27 Dec 2025 20:06:36 AEST	dev.agent.yaml	是的：我在当前 Codex 会话里跑 node -v 得到 v16.16.0，因为默认命中 /usr/local/bin/node。你新开的窗口显示 22，通常是 nvm 在那个 shell 里把 ~/.nvm/.../bin 放到了 PATH 前面或执行了 nvm use。这里同时存在两个 node，但 PATH 顺序让 /usr/local/bin/node 赢。

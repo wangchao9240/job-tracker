@@ -1,0 +1,87 @@
+# generated: 2025-12-26T17:56:20Z
+# project: job-tracker
+# project_key: job-tracker
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2025-12-26T17:56:20Z
+project: job-tracker
+project_key: job-tracker
+tracking_system: file-system
+story_location: "_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: in-progress
+  1-1-set-up-initial-project-from-starter-template: review
+  1-2-magic-link-sign-in-and-protected-workspace: in-progress
+  1-3-sign-out-and-session-boundary: ready-for-dev
+  1-4-non-mvp-high-fit-preferences-settings: ready-for-dev
+  1-5-non-mvp-generation-preferences-settings: ready-for-dev
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-create-and-edit-application-records-with-validation-and-data-isolation: backlog
+  2-2-application-inbox-list-and-detail-view: backlog
+  2-3-search-and-filter-applications: backlog
+  2-4-application-timeline-change-history-traceability: backlog
+  2-5-non-mvp-no-response-follow-up-prompts: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-paste-job-url-to-create-application-with-source-detection-and-best-effort-extraction: backlog
+  3-2-review-and-edit-extracted-job-fields: backlog
+  3-3-manual-jd-snapshot-paste-and-storage: backlog
+  3-4-duplicate-detection-for-job-url-and-company-role: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-extract-responsibilities-and-requirements-from-jd-snapshot: backlog
+  4-2-edit-and-maintain-the-application-requirements-lists: backlog
+  4-3-low-signal-jd-detection-and-key-responsibility-selection: backlog
+  4-4-non-mvp-interview-preparation-pack-and-notes: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-create-and-manage-projects-experiences: backlog
+  5-2-create-and-manage-project-bullets-evidence-items: backlog
+  5-3-tagging-search-and-filtering-for-bullets: backlog
+  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: backlog
+  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-generate-cover-letter-draft-from-confirmed-mapping: backlog
+  6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: backlog
+  6-3-save-submitted-cover-letter-version-immutable-versioned: backlog
+  6-4-submission-notes-for-traceability: backlog
+  6-5-non-mvp-generate-preview-draft-ungrounded: backlog
+  epic-6-retrospective: optional
