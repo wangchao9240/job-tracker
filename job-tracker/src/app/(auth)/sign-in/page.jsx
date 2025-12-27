@@ -8,15 +8,12 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [errorMessage, setErrorMessage] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [resendError, setResendError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus("loading");
-    setErrorMessage("");
-
+  const sendMagicLink = async ({ nextStatus }) => {
     const supabase = createClient();
 
-    // Build redirect URL dynamically (avoids hardcoding localhost)
     const redirectTo = `${window.location.origin}/callback`;
 
     const { error } = await supabase.auth.signInWithOtp({
@@ -27,16 +24,46 @@ export default function SignInPage() {
     });
 
     if (error) {
+      return { ok: false };
+    }
+
+    setStatus(nextStatus);
+    return { ok: true };
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("loading");
+    setErrorMessage("");
+    setResendError("");
+
+    const result = await sendMagicLink({ nextStatus: "success" });
+
+    if (!result.ok) {
       setStatus("error");
-      setErrorMessage(error.message || "Failed to send Magic Link. Please try again.");
-    } else {
-      setStatus("success");
+      setErrorMessage(
+        "Couldn't send the magic link. Please double-check your email and try again."
+      );
     }
   };
 
   const handleResend = () => {
     setStatus("idle");
     setErrorMessage("");
+    setResendError("");
+  };
+
+  const handleResendNow = async () => {
+    setIsResending(true);
+    setResendError("");
+
+    const result = await sendMagicLink({ nextStatus: "success" });
+
+    if (!result.ok) {
+      setResendError("Couldn't resend the magic link. Please try again.");
+    }
+
+    setIsResending(false);
   };
 
   // Check for error in URL params (from callback redirect)
@@ -78,12 +105,23 @@ export default function SignInPage() {
                 We sent a magic link to <strong>{email}</strong>
               </p>
             </div>
+            {resendError && (
+              <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  {resendError}
+                </p>
+              </div>
+            )}
             <Button
               variant="outline"
-              onClick={handleResend}
+              onClick={handleResendNow}
               className="w-full"
+              disabled={isResending}
             >
-              Send another link
+              {isResending ? "Sending..." : "Send another link"}
+            </Button>
+            <Button onClick={handleResend} className="w-full">
+              Use a different email
             </Button>
           </div>
         ) : (

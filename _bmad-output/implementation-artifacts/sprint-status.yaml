@@ -41,15 +41,15 @@ story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
   epic-1: in-progress
-  1-1-set-up-initial-project-from-starter-template: review
-  1-2-magic-link-sign-in-and-protected-workspace: in-progress
-  1-3-sign-out-and-session-boundary: ready-for-dev
-  1-4-non-mvp-high-fit-preferences-settings: ready-for-dev
-  1-5-non-mvp-generation-preferences-settings: ready-for-dev
+  1-1-set-up-initial-project-from-starter-template: done
+  1-2-magic-link-sign-in-and-protected-workspace: done
+  1-3-sign-out-and-session-boundary: done
+  1-4-non-mvp-high-fit-preferences-settings: review
+  1-5-non-mvp-generation-preferences-settings: review
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-create-and-edit-application-records-with-validation-and-data-isolation: backlog
+  epic-2: in-progress
+  2-1-create-and-edit-application-records-with-validation-and-data-isolation: ready-for-dev
   2-2-application-inbox-list-and-detail-view: backlog
   2-3-search-and-filter-applications: backlog
   2-4-application-timeline-change-history-traceability: backlog

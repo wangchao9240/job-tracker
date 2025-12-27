@@ -1,6 +1,6 @@
 # Story 1.1: Set Up Initial Project from Starter Template
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -118,8 +118,11 @@ N/A
 - Tailwind CSS 4 installed and configured
 - shadcn/ui initialized with defaults, Button component added
 - Button component rendered on default page (`src/app/page.js`) confirming Tailwind styling works
-- Production build completed successfully with Turbopack
-- ESLint passed with no errors
+- Production build completed successfully under Node.js >= 20.9.0
+- `npm run lint` passed under Node.js >= 20.9.0
+- Added `job-tracker/.nvmrc` + `engines.node` to make Node version requirements explicit
+- Removed `next/font/google` usage to avoid network fetch during `next build`
+- Note: `npm run dev` cannot be started inside this Codex sandbox (port bind EPERM); validate locally
 
 ### File List
 
@@ -127,6 +130,7 @@ N/A
 - `job-tracker/package.json` (Next.js 16.1.1, React 19.2.3, Tailwind CSS 4)
 - `job-tracker/package-lock.json`
 - `job-tracker/next.config.mjs`
+- `job-tracker/.nvmrc`
 - `job-tracker/jsconfig.json` (import alias @/*)
 - `job-tracker/eslint.config.mjs`
 - `job-tracker/postcss.config.mjs`
@@ -137,9 +141,11 @@ N/A
 - `job-tracker/src/components/ui/button.jsx` (shadcn Button component)
 - `job-tracker/src/lib/utils.js` (shadcn utilities)
 - `job-tracker/public/` (static assets)
+- `.gitignore`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (status updated to in-progress → review)
 - `_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md` (this story file)
 
 ### Change Log
 
 - 2025-12-27: Story 1.1 implemented - Next.js project bootstrapped, shadcn/ui configured, build and lint verified
+- 2025-12-27: Code review fixes - offline-friendly build, explicit Node versioning, minor UI code cleanup

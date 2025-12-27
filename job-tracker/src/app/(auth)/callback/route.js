@@ -5,17 +5,20 @@ export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
-  const errorDescription = searchParams.get("error_description");
 
   // Handle error from Supabase (e.g., expired link)
   if (error) {
-    console.error("Auth callback error:", error, errorDescription);
+    console.error(
+      JSON.stringify({ level: "error", code: "AUTH_CALLBACK_ERROR", error })
+    );
     return NextResponse.redirect(`${origin}/sign-in?error=invalid_link`);
   }
 
   // No code provided
   if (!code) {
-    console.error("Auth callback: No code provided");
+    console.error(
+      JSON.stringify({ level: "error", code: "AUTH_CALLBACK_MISSING_CODE" })
+    );
     return NextResponse.redirect(`${origin}/sign-in?error=invalid_link`);
   }
 
@@ -24,7 +27,13 @@ export async function GET(request) {
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (exchangeError) {
-    console.error("Auth callback exchange error:", exchangeError.message);
+    console.error(
+      JSON.stringify({
+        level: "error",
+        code: "AUTH_CALLBACK_EXCHANGE_FAILED",
+        status: exchangeError.status,
+      })
+    );
     return NextResponse.redirect(`${origin}/sign-in?error=invalid_link`);
   }
 

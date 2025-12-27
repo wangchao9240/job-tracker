@@ -1396,3 +1396,45 @@ Sat 27 Dec 2025 20:03:22 AEST	dev.agent.yaml	**🔥 CODE REVIEW FINDINGS, ggbb!*
 2) 只在 Story 里加待办 action items（不改代码）
 3) 先展开某一条问题细节（告诉我 issue 编号或标题）
 Sat 27 Dec 2025 20:06:36 AEST	dev.agent.yaml	是的：我在当前 Codex 会话里跑 node -v 得到 v16.16.0，因为默认命中 /usr/local/bin/node。你新开的窗口显示 22，通常是 nvm 在那个 shell 里把 ~/.nvm/.../bin 放到了 PATH 前面或执行了 nvm use。这里同时存在两个 node，但 PATH 顺序让 /usr/local/bin/node 赢。
+Sat 27 Dec 2025 21:37:25 AEST	dev.agent.yaml	已按选项1修复 Story 1.3 的 HIGH+MEDIUM（聚焦功能验证）：
+- 补齐 AC3：新增 `SessionCheck`，页面加载会调用 `/api/me`，若 401 显示可操作的“重新登录”提示（job-tracker/src/components/auth/SessionCheck.jsx，job-tracker/src/app/page.js）。
+- 强化 sign-out UX：`SignOutButton` 现在检查 `response.ok`、容错非 JSON，并在 finally 里正确清理 loading；成功后跳转到 `/sign-in?reason=signed_out`（job-tracker/src/components/auth/SignOutButton.jsx）。
+- 修正 API 语义与日志：`/api/me` 现在对异常返回 500 + `INTERNAL`，并用结构化 JSON 日志；sign-out endpoint 也改为结构化日志且不泄露上游 message（job-tracker/src/app/api/me/route.js，job-tracker/src/app/api/auth/sign-out/route.js）。
+- Story 1.3 记录同步：更新 Completion Notes + File List（_bmad-output/implementation-artifacts/1-3-sign-out-and-session-boundary.md）。
+
+已验证（Node v22.12.0）：`job-tracker/` 的 `npm run lint` + `npm run build` 通过。手工 AC 仍需你本机起 dev server（此 sandbox 端口 bind EPERM）。
+Sat 27 Dec 2025 21:43:35 AEST	dev.agent.yaml	我没改 sprint-status 的原因是：Story 1.3 的 Status 仍是 review（而且 sprint-status 里 1-3 现在也是 review），所以没有发生“状态变更”可同步。你想把 1-3 先改成 in-progress（等你本机完成 Manual verification 再改回 review/done），还是保持 review 不动？
+Sat 27 Dec 2025 21:45:35 AEST	dev.agent.yaml	已更新：Story 1.3 状态改为 done，并同步 sprint-status.yaml 里 1-3 为 done。
+Sat 27 Dec 2025 21:53:44 AEST	dev.agent.yaml	你触发了 *code-review，但没指定要审查哪一个 story。请从列表里选一个编号或直接粘贴 story 文件路径。
+Sat 27 Dec 2025 21:57:32 AEST	dev.agent.yaml	**🔥 CODE REVIEW FINDINGS, ggbb!**
+
+**Story:** _bmad-output/implementation-artifacts/1-4-non-mvp-high-fit-preferences-settings.md
+**Issues Found:** 4 High, 4 Medium, 2 Low
+
+## 🔴 HIGH ISSUES
+- 任务标 [x] 但证据缺失：Story 声称已更新 `_bmad-output/architecture.md` 来记录 `/settings` + preferences endpoints（_bmad-output/implementation-artifacts/1-4-non-mvp-high-fit-preferences-settings.md:20），但在 `_bmad-output/architecture.md` 里找不到任何 `/settings` / `high_fit_preferences` / `preferences/high-fit` 相关内容（rg 全文无命中）。这是“完成打勾但未做”的硬伤。
+- 校验栈版本违背项目约束：项目上下文要求 `zod` 4.2.1（_bmad-output/project-context.md:28），但实际依赖是 `zod: ^3.24.1`（job-tracker/package.json:25）。
+- 手工验证记录自相矛盾：Tasks 里 Manual verification 已勾 [x]（_bmad-output/implementation-artifacts/1-4-non-mvp-high-fit-preferences-settings.md:67），但 Completion Notes 写 “Manual verification pending”（:147）。
+- 1.4 的 Settings UI 被 1.5 功能耦合：`job-tracker/src/app/settings/page.jsx` 同时依赖 `/api/preferences/generation`（job-tracker/src/app/settings/page.jsx:84），导致 1.4 不能独立运行/测试（generation 失败会让整个 Settings 报错）。
+
+## 🟡 MEDIUM ISSUES
+- API 校验过宽：`visaFilter`/`roleFocus`/`roleLevels` 都是 `z.string()` 或任意 string 数组（job-tracker/src/app/api/preferences/high-fit/route.js:20），不符合你在 story 定义的枚举集合（_bmad-output/implementation-artifacts/1-4-non-mvp-high-fit-preferences-settings.md:76）。
+- API 日志不符合“结构化 JSON + 不泄露上游错误”规则：直接 `console.error(..., err)`（job-tracker/src/app/api/preferences/high-fit/route.js:59,113）。
+- migration 有冗余 index：`user_id` 已是 PRIMARY KEY，自带索引；额外 `idx_high_fit_preferences_user_id` 多余（job-tracker/supabase/migrations/0002_high_fit_preferences.sql:5,39）。
+- migration 定义通用函数名 `public.update_updated_at_column()` 并 `OR REPLACE`（job-tracker/supabase/migrations/0002_high_fit_preferences.sql:43）；后续表/迁移复用时容易被无意覆盖行为（设计风险）。
+
+## 🟢 LOW ISSUES
+- Settings 选项超出 story 描述：Locations/RoleFocus 提供了更多选项（job-tracker/src/app/settings/page.jsx:17,34）；不是错，但会导致数据域更宽。
+- Settings 保存逻辑 Promise.all 任何一个失败就报“全部失败”（job-tracker/src/app/settings/page.jsx:146）；高/低 fit 保存耦合，体验不佳。
+
+你要我怎么做？
+1) 自动修复所有 HIGH+MEDIUM（补齐 architecture 文档、对齐 zod 版本、收紧枚举校验、结构化日志、解耦 settings 的 generation 部分）
+2) 只在 Story 1.4 加 action items（不改代码）
+3) 深挖某一条问题（给我 issue 标题）
+Sat 27 Dec 2025 21:59:27 AEST	sm.agent.yaml	✅ 已创建下一条 Story：2-1-create-and-edit-application-records-with-validation-and-data-isolation，并标记为 ready-for-dev。
+- Story 文件：_bmad-output/implementation-artifacts/2-1-create-and-edit-application-records-with-validation-and-data-isolation.md
+- Sprint 状态已更新：_bmad-output/implementation-artifacts/sprint-status.yaml（epic-2=in-progress，2-1=ready-for-dev）
+- 验证报告：_bmad-output/implementation-artifacts/validation-report-2025-12-27T11-58-48Z.md
+
+下一条 backlog 是 2-2（application inbox list + detail）。需要我继续创建就再输入 *create-story。
+Sat 27 Dec 2025 21:59:51 AEST	dev.agent.yaml	已按选项2：我没有改代码，只把本次 code-review 的 HIGH/MEDIUM 跟进项写入 Story 1.4 的 “Review Follow-ups (AI)” 小节。要继续审 Story 1.5 吗？

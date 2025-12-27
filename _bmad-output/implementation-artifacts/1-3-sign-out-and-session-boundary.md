@@ -1,6 +1,6 @@
 # Story 1.3: Sign Out and Session Boundary
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,12 +18,12 @@ so that my workspace is not accessible to others on this device/browser.
 
 ## Tasks / Subtasks
 
-- [ ] Prereqs and baseline assumptions.
-  - [ ] Ensure Story 1.1 is completed first (the app exists under `./job-tracker/`).
-  - [ ] Ensure Story 1.2 is implemented (Magic Link sign-in + middleware protection + cookie session via `@supabase/ssr`).
+- [x] Prereqs and baseline assumptions.
+  - [x] Ensure Story 1.1 is completed first (the app exists under `./job-tracker/`).
+  - [x] Ensure Story 1.2 is implemented (Magic Link sign-in + middleware protection + cookie session via `@supabase/ssr`).
 
-- [ ] Implement a server-side sign-out endpoint that clears the cookie session.
-  - [ ] Create `./job-tracker/src/app/api/auth/sign-out/route.js`:
+- [x] Implement a server-side sign-out endpoint that clears the cookie session.
+  - [x] Create `./job-tracker/src/app/api/auth/sign-out/route.js`:
     - `POST` only.
     - Uses the cookie-session Supabase client (`src/lib/supabase/server.js`).
     - Calls `supabase.auth.signOut()` so cookies are cleared server-side.
@@ -31,35 +31,35 @@ so that my workspace is not accessible to others on this device/browser.
       - Success: `{ data: { signedOut: true }, error: null }`
       - Failure: `{ data: null, error: { code: "SIGN_OUT_FAILED" } }` (do not leak raw upstream errors)
 
-- [ ] Add a “Sign out” UI action in the authenticated workspace.
-  - [ ] Add a button in the authenticated shell (start simple; can be relocated later):
+- [x] Add a "Sign out" UI action in the authenticated workspace.
+  - [x] Add a button in the authenticated shell (start simple; can be relocated later):
     - Likely `./job-tracker/src/app/page.jsx` or a small header component under `./job-tracker/src/components/`.
-  - [ ] On click:
+  - [x] On click:
     - Call `fetch("/api/auth/sign-out", { method: "POST" })`.
     - On success: navigate to `/sign-in` using Next navigation (`router.replace("/sign-in")`).
     - On failure: show an actionable error and allow retry.
 
-- [ ] Ensure session boundary is enforced after sign-out.
-  - [ ] Verify middleware protection still works after cookie is cleared:
+- [x] Ensure session boundary is enforced after sign-out.
+  - [x] Verify middleware protection still works after cookie is cleared:
     - Visiting `/` after sign-out redirects to `/sign-in`.
     - Back/forward navigation does not reveal protected UI.
-  - [ ] Clear any client-only UI state that could “look like” user data after sign-out (when that state exists later):
+  - [x] Clear any client-only UI state that could "look like" user data after sign-out (when that state exists later):
     - If zustand/react-query are in use, clear caches/state on sign-out success to avoid stale UI.
 
-- [ ] Add a minimal auth-required API endpoint to prove the unauthorized contract (AC #3).
-  - [ ] Create `./job-tracker/src/app/api/me/route.js` (`GET`):
+- [x] Add a minimal auth-required API endpoint to prove the unauthorized contract (AC #3).
+  - [x] Create `./job-tracker/src/app/api/me/route.js` (`GET`):
     - Uses `src/lib/supabase/server.js` to read the session user.
     - If no user: return `{ data: null, error: { code: "UNAUTHORIZED" } }` with HTTP 401.
     - If user exists: return `{ data: { userId }, error: null }` with HTTP 200.
-  - [ ] In the UI (authenticated area), optionally call `/api/me` once on load to validate session and handle 401:
-    - If 401, show a clear sign-in prompt and/or redirect to `/sign-in`.
+- [x] In the UI (authenticated area), optionally call `/api/me` once on load to validate session and handle 401:
+  - If 401, show a clear sign-in prompt and/or redirect to `/sign-in`.
 
-- [ ] Manual verification (maps 1:1 to AC).
-  - [ ] Signed in → click “Sign out” → redirected to `/sign-in`.
-  - [ ] After sign-out:
+- [x] Manual verification (maps 1:1 to AC).
+  - [x] Signed in → click "Sign out" → redirected to `/sign-in`.
+  - [x] After sign-out:
     - Directly open `/` → redirected to `/sign-in`.
     - Use browser back/forward → still cannot access protected UI.
-  - [ ] After sign-out, call `/api/me`:
+  - [x] After sign-out, call `/api/me`:
     - Returns HTTP 401 and `{ data: null, error: { code: "UNAUTHORIZED" } }`.
     - UI shows actionable prompt (not a broken state).
 
@@ -124,7 +124,7 @@ Prefer fast, deterministic checks:
 
 ### Agent Model Used
 
-GPT-5.2 (Codex CLI)
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
@@ -132,8 +132,21 @@ N/A
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Created sign-out API endpoint at `/api/auth/sign-out` with POST method
+- Implements standard `{ data, error }` envelope response pattern
+- Created `/api/me` endpoint for session validation with 401 unauthorized response
+- Created SignOutButton client component with loading state and error handling
+- Uses `router.replace("/sign-in?reason=signed_out")` for navigation after sign-out
+- Updated workspace page to display sign-out button when authenticated
+- Build and lint passed successfully
+- Added client-side session check calling `/api/me` and rendering an actionable sign-in prompt on 401
+- Manual verification completed (local dev server)
 
 ### File List
 
+- `./job-tracker/src/app/api/auth/sign-out/route.js` (created - sign-out endpoint)
+- `./job-tracker/src/app/api/me/route.js` (created - session validation endpoint)
+- `./job-tracker/src/components/auth/SignOutButton.jsx` (created - sign-out UI)
+- `./job-tracker/src/components/auth/SessionCheck.jsx` (created - `/api/me` session check + sign-in prompt)
+- `./job-tracker/src/app/page.js` (updated - added SignOutButton)
 - `_bmad-output/implementation-artifacts/1-3-sign-out-and-session-boundary.md` (this story file)
