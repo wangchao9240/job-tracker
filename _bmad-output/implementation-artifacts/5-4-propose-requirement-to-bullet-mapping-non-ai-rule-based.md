@@ -1,6 +1,6 @@
 # Story 5.4: Propose Requirement-to-Bullet Mapping (Non-AI, Rule-Based)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -124,8 +124,11 @@ N/A
 - ✅ Built POST /api/mapping/propose endpoint with comprehensive validation and error handling
 - ✅ Added MappingProposalPanel component with retry functionality and error state preservation
 - ✅ Created comprehensive unit tests documenting algorithm behavior
-- ✅ Created route tests documenting API envelope patterns and error codes
-- ✅ Build passed successfully - all routes registered and compiled
+- ✅ Created integration route tests validating auth, error codes, and success envelope
+- ✅ UI now shows bullet text previews and disables CTA until prerequisites exist
+- ✅ Proceed-to-adjust now navigates into mapping workbench (`/mapping?applicationId=...`)
+- ✅ Determinism hardening: stable sort tie-breaker for equal scores
+- ✅ Tests passed (Node 22 via `.nvmrc`): mapping unit + route handler tests
 
 ### File List
 
@@ -134,5 +137,5 @@ N/A
 - `job-tracker/src/app/api/mapping/propose/route.js` (new - API endpoint)
 - `job-tracker/src/app/api/mapping/propose/__tests__/route.test.js` (new - route tests)
 - `job-tracker/src/components/features/mapping/MappingProposalPanel.jsx` (new - UI component)
-- `job-tracker/src/app/mapping/page.jsx` (new - demo/test page)
+- `job-tracker/src/app/mapping/proposal/page.jsx` (new - mapping proposal page)
 - `_bmad-output/implementation-artifacts/5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based.md` (this story file - updated)

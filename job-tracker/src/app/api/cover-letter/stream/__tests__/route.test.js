@@ -1,215 +1,248 @@
 /**
- * Tests for POST /api/cover-letter/stream
- * Documents streaming behavior: delta → done on success, error on missing prerequisites
+ * @jest-environment node
  */
 
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { POST } from "../route";
+import { createClient } from "@/lib/supabase/server";
+import { getApplicationById } from "@/lib/server/db/applicationsRepo";
+import { listProjectBulletsByIds } from "@/lib/server/db/projectBulletsRepo";
+import { createDraftVersion, createPreviewVersion } from "@/lib/server/db/coverLetterVersionsRepo";
 
-// Note: These tests document expected behavior
-// Full integration testing of streaming requires mocking fetch and SSE parsing
+jest.mock("@/lib/supabase/server");
+jest.mock("@/lib/server/db/applicationsRepo");
+jest.mock("@/lib/server/db/projectBulletsRepo");
+jest.mock("@/lib/server/db/coverLetterVersionsRepo");
 
-describe('POST /api/cover-letter/stream', () => {
-  describe('Authentication', () => {
-    test('should return 401 when no auth session exists', async () => {
-      // Expected behavior:
-      // When: Request without valid session
-      // Then: Returns 401 with UNAUTHORIZED error code
-      // Format: { data: null, error: { code: 'UNAUTHORIZED', message: '...' } }
+function makeStream(chunks) {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.close();
+    },
+  });
+}
 
-      expect(true).toBe(true); // Documented behavior
-    });
+async function readStreamToString(stream) {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let out = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    out += decoder.decode(value, { stream: true });
+  }
+  return out;
+}
+
+describe("POST /api/cover-letter/stream", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.JOB_OPENAI_BASE_URL = "https://example.invalid/v1";
+    process.env.JOB_OPENAI_API_KEY = "test-key";
   });
 
-  describe('Request Validation', () => {
-    test('should return 400 when applicationId is missing', async () => {
-      // Expected behavior:
-      // When: POST body is {} or { applicationId: null }
-      // Then: Returns 400 with VALIDATION_FAILED error code
-      // Format: { data: null, error: { code: 'VALIDATION_FAILED', message: '...', details: [...] } }
-
-      expect(true).toBe(true); // Documented behavior
+  test("returns 401 when unauthenticated", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
     });
 
-    test('should return 400 when applicationId is not a valid UUID', async () => {
-      // Expected behavior:
-      // When: POST body is { applicationId: 'invalid-uuid' }
-      // Then: Returns 400 with VALIDATION_FAILED error code
-
-      expect(true).toBe(true); // Documented behavior
+    const req = new Request("http://localhost/api/cover-letter/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId: "123e4567-e89b-12d3-a456-426614174000" }),
     });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
-  describe('Prerequisite Validation', () => {
-    test('should return error when application not found', async () => {
-      // Expected behavior:
-      // When: applicationId does not exist or not owned by user
-      // Then: Returns 404 with NOT_FOUND error code
-      // Format: { data: null, error: { code: 'NOT_FOUND', message: '...' } }
-
-      expect(true).toBe(true); // Documented behavior
+  test("returns 400 when JD snapshot missing", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
+    });
+    getApplicationById.mockResolvedValue({
+      id: "app-123",
+      userId: "user-123",
+      company: "Test Co",
+      role: "Engineer",
+      jdSnapshot: null,
     });
 
-    test('should emit terminal error event when jdSnapshot is missing', async () => {
-      // Expected behavior:
-      // When: Application exists but jdSnapshot is null/empty
-      // Then: Returns 400 with JD_SNAPSHOT_REQUIRED error code
-      // Format: { data: null, error: { code: 'JD_SNAPSHOT_REQUIRED', message: '...' } }
-      //
-      // OR (if streaming has started):
-      // Emits: event: error
-      //        data: {"code":"JD_SNAPSHOT_REQUIRED","message":"..."}
-
-      expect(true).toBe(true); // Documented behavior
+    const req = new Request("http://localhost/api/cover-letter/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId: "123e4567-e89b-12d3-a456-426614174000" }),
     });
 
-    test('should emit terminal error event when confirmedMapping is missing', async () => {
-      // Expected behavior:
-      // When: Application exists but confirmedMapping is null or has no items
-      // Then: Returns 400 with CONFIRMED_MAPPING_REQUIRED error code
-      // Format: { data: null, error: { code: 'CONFIRMED_MAPPING_REQUIRED', message: '...' } }
-      //
-      // OR (if streaming has started):
-      // Emits: event: error
-      //        data: {"code":"CONFIRMED_MAPPING_REQUIRED","message":"..."}
-
-      expect(true).toBe(true); // Documented behavior
-    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe("JD_SNAPSHOT_REQUIRED");
   });
 
-  describe('Streaming Generation', () => {
-    test('should emit delta events followed by done event on success', async () => {
-      // Expected behavior:
-      // When: Valid request with all prerequisites met
-      // Then: Streams SSE events in this sequence:
-      //   1. event: delta
-      //      data: {"content":"Dear"}
-      //   2. event: delta
-      //      data: {"content":" Hiring"}
-      //   3. event: delta
-      //      data: {"content":" Manager"}
-      //   ... (multiple delta events)
-      //   N. event: done
-      //      data: {"draftId":"<uuid>","applicationId":"<uuid>"}
-      //
-      // After done event:
-      // - Full content is persisted as latest draft in cover_letter_versions
-      // - Previous latest draft (if exists) is marked is_latest = false
-      // - New draft is marked is_latest = true
-
-      expect(true).toBe(true); // Documented behavior
+  test("returns 400 when confirmedMapping missing in grounded mode", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
+    });
+    getApplicationById.mockResolvedValue({
+      id: "app-123",
+      userId: "user-123",
+      company: "Test Co",
+      role: "Engineer",
+      jdSnapshot: "JD text",
+      confirmedMapping: null,
     });
 
-    test('should emit error event when AI provider fails', async () => {
-      // Expected behavior:
-      // When: AI provider returns non-2xx response or network error
-      // Then: Emits terminal error event:
-      //   event: error
-      //   data: {"code":"AI_PROVIDER_ERROR","message":"..."}
-
-      expect(true).toBe(true); // Documented behavior
+    const req = new Request("http://localhost/api/cover-letter/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        applicationId: "123e4567-e89b-12d3-a456-426614174000",
+        mode: "grounded",
+      }),
     });
 
-    test('should emit error event when AI provider is not configured', async () => {
-      // Expected behavior:
-      // When: OPENAI_API_KEY env var is missing
-      // Then: Emits terminal error event:
-      //   event: error
-      //   data: {"code":"AI_PROVIDER_NOT_CONFIGURED","message":"..."}
-
-      expect(true).toBe(true); // Documented behavior
-    });
-
-    test('should emit error event when persist fails after generation', async () => {
-      // Expected behavior:
-      // When: Generation succeeds but createDraftVersion fails
-      // Then: Emits terminal error event:
-      //   event: error
-      //   data: {"code":"PERSIST_FAILED","message":"..."}
-      //
-      // Note: Partial content was generated but NOT saved
-      // User can retry to regenerate and attempt persist again
-
-      expect(true).toBe(true); // Documented behavior
-    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe("CONFIRMED_MAPPING_REQUIRED");
   });
 
-  describe('Prompt Construction', () => {
-    test('should build prompt with JD, company, role, and confirmed mapping', async () => {
-      // Expected behavior:
-      // Prompt includes:
-      // - Company name and role title
-      // - Full JD snapshot text
-      // - Each requirement/responsibility from confirmedMapping
-      // - Corresponding bullet evidence for each item (loaded via getProjectBulletById)
-      // - Uncovered items explicitly marked as "no suitable evidence"
-      // - Instructions to not fabricate evidence for uncovered items
-
-      expect(true).toBe(true); // Documented behavior
+  test("streams delta then done and persists draft on success (grounded)", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
     });
 
-    test('should load bullet details for all bulletIds in confirmedMapping', async () => {
-      // Expected behavior:
-      // For each item in confirmedMapping.items:
-      // - If item.bulletIds exists and is non-empty:
-      //   - Call getProjectBulletById for each bulletId
-      //   - Include bullet.title and bullet.text in prompt
-      // - If item.uncovered is true:
-      //   - Mark as uncovered in prompt
-      //   - Do not attempt to load bullets
-
-      expect(true).toBe(true); // Documented behavior
+    getApplicationById.mockResolvedValue({
+      id: "app-123",
+      userId: "user-123",
+      company: "Test Co",
+      role: "Engineer",
+      jdSnapshot: "JD text",
+      confirmedMapping: {
+        version: 1,
+        confirmedAt: "2025-12-28T10:00:00.000Z",
+        items: [
+          {
+            itemKey: "requirement-0",
+            kind: "requirement",
+            text: "Build X",
+            bulletIds: ["b-1"],
+            uncovered: false,
+          },
+        ],
+      },
     });
+
+    listProjectBulletsByIds.mockResolvedValue([
+      { id: "b-1", title: "Bullet", text: "Did a thing", tags: null, impact: null },
+    ]);
+
+    global.fetch = jest.fn(async () => {
+      const aiSse = makeStream([
+        'data: {"choices":[{"delta":{"content":"Hello "}}]}\n',
+        'data: {"choices":[{"delta":{"content":"world"}}]}\n',
+        "data: [DONE]\n",
+      ]);
+      return new Response(aiSse, { status: 200 });
+    });
+
+    createDraftVersion.mockResolvedValue({
+      data: {
+        id: "draft-id-1",
+        kind: "draft",
+      },
+      error: null,
+    });
+
+    const req = new Request("http://localhost/api/cover-letter/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        applicationId: "123e4567-e89b-12d3-a456-426614174000",
+        mode: "grounded",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toMatch(/text\/event-stream/);
+
+    const sseText = await readStreamToString(res.body);
+    expect(sseText).toContain("event: delta");
+    expect(sseText).toContain("event: done");
+    expect(sseText).toContain('"draftId":"draft-id-1"');
+
+    expect(createDraftVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-123",
+        content: "Hello world",
+      })
+    );
   });
 
-  describe('AI Provider Integration', () => {
-    test('should use OpenAI-compatible API with streaming', async () => {
-      // Expected behavior:
-      // - Uses OPENAI_BASE_URL and OPENAI_API_KEY env vars
-      // - Calls POST {baseUrl}/chat/completions
-      // - Request body includes { model, messages, stream: true, temperature, max_tokens }
-      // - Processes SSE response from AI provider
-      // - Accumulates fullContent across all delta chunks
-      // - Returns fullContent after stream completes
-
-      expect(true).toBe(true); // Documented behavior
+  test("preview mode does not require confirmedMapping and persists preview", async () => {
+    createClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user-123" } }, error: null }),
+      },
     });
 
-    test('should never log full JD content or bullet text', async () => {
-      // Expected behavior:
-      // Logs include:
-      // - applicationId
-      // - userId
-      // - error codes/messages
-      // - counts (e.g., number of bullets loaded)
-      //
-      // Logs NEVER include:
-      // - jdSnapshot text
-      // - bullet.text or bullet.title
-      // - generated content (except counts)
-      // - API keys or credentials
-
-      expect(true).toBe(true); // Documented behavior
+    getApplicationById.mockResolvedValue({
+      id: "app-123",
+      userId: "user-123",
+      company: "Test Co",
+      role: "Engineer",
+      jdSnapshot: "JD text",
+      confirmedMapping: null,
     });
-  });
 
-  describe('Response Headers', () => {
-    test('should return SSE headers for streaming response', async () => {
-      // Expected behavior:
-      // Response headers:
-      // - Content-Type: text/event-stream
-      // - Cache-Control: no-cache
-      // - Connection: keep-alive
+    listProjectBulletsByIds.mockResolvedValue([]);
 
-      expect(true).toBe(true); // Documented behavior
+    global.fetch = jest.fn(async () => {
+      const aiSse = makeStream(['data: {"choices":[{"delta":{"content":"Preview"}}]}\n', "data: [DONE]\n"]);
+      return new Response(aiSse, { status: 200 });
     });
+
+    createPreviewVersion.mockResolvedValue({
+      data: {
+        id: "preview-id-1",
+        kind: "preview",
+      },
+      error: null,
+    });
+
+    const req = new Request("http://localhost/api/cover-letter/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        applicationId: "123e4567-e89b-12d3-a456-426614174000",
+        mode: "preview",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const sseText = await readStreamToString(res.body);
+    expect(sseText).toContain('"draftId":"preview-id-1"');
+    expect(createPreviewVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-123",
+        content: "Preview",
+      })
+    );
   });
 });
-
-// Note: Full integration tests would require:
-// 1. Mocking fetch for AI provider (using vi.mock or MSW)
-// 2. Parsing SSE stream in test
-// 3. Mocking Supabase client
-// 4. Testing actual database persistence
-//
-// These tests document the contract and expected behavior
-// Integration tests should be added in a separate E2E test suite

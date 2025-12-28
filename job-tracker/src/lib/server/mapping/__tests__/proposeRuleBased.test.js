@@ -209,7 +209,7 @@ describe("proposeMapping", () => {
       const bullets = [
         {
           id: "bullet-1",
-          text: "Experience with React",
+          text: "Experience with React library",
           title: null,
           tags: null,
           impact: null,

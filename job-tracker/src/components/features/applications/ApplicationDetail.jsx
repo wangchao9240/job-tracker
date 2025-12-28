@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { MappingWorkbench } from "@/components/features/mapping/MappingWorkbench";
+import { CoverLetterPanel } from "@/components/features/cover-letter/CoverLetterPanel";
 import {
   APPLICATION_STATUSES,
   STATUS_LABELS,
@@ -146,6 +148,9 @@ export function ApplicationDetail({
   const [selectedFocusItems, setSelectedFocusItems] = useState([]);
   const [focusSaveStatus, setFocusSaveStatus] = useState("idle"); // idle | saving | error
 
+  // Mapping workbench visibility
+  const [showMappingWorkbench, setShowMappingWorkbench] = useState(false);
+
   // Interview prep state
   const [interviewPrepPack, setInterviewPrepPack] = useState(application.interviewPrepPack || null);
   const [interviewPrepNotes, setInterviewPrepNotes] = useState(application.interviewPrepNotes || "");
@@ -181,6 +186,7 @@ export function ApplicationDetail({
     setShowFocusSelection(false);
     setSelectedFocusItems([]);
     setFocusSaveStatus("idle");
+    setShowMappingWorkbench(false);
     // Reset interview prep state
     setInterviewPrepPack(application.interviewPrepPack || null);
     setInterviewPrepNotes(application.interviewPrepNotes || "");
@@ -248,7 +254,7 @@ export function ApplicationDetail({
     return () => {
       isMounted = false;
     };
-  }, [application.id, router]);
+  }, [application.id]);
 
   // Cleanup: abort any in-flight extraction or save on unmount
   useEffect(() => {
@@ -2067,6 +2073,40 @@ export function ApplicationDetail({
                 Click &quot;Extract requirements&quot; to analyze the job description.
               </p>
             )}
+          </div>
+
+          {/* Mapping Workbench Section */}
+          <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Mapping Workbench
+              </h3>
+              <Button
+                onClick={() => setShowMappingWorkbench((prev) => !prev)}
+                variant="outline"
+                size="sm"
+              >
+                {showMappingWorkbench ? "Hide" : "Open"}
+              </Button>
+            </div>
+
+            {!showMappingWorkbench && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Review suggested bullets, mark uncovered items, and confirm your mapping before generating a cover letter.
+              </p>
+            )}
+
+            {showMappingWorkbench && (
+              <MappingWorkbench applicationId={application.id} onUpdate={onUpdate} />
+            )}
+          </div>
+
+          {/* Cover Letter Section */}
+          <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+              Cover Letter
+            </h3>
+            <CoverLetterPanel applicationId={application.id} application={application} />
           </div>
 
           {/* Interview Prep Section */}

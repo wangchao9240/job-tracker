@@ -150,7 +150,7 @@ describe("ApplicationDetail - JD Snapshot (Story 3-3)", () => {
 
       await waitFor(() => {
         expect(screen.getByText(/⚠️ Job description is large/i)).toBeInTheDocument();
-        expect(screen.getByText(/60,000 characters/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/60,000 characters/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/consider summarizing/i)).toBeInTheDocument();
       });
     });
@@ -167,7 +167,7 @@ describe("ApplicationDetail - JD Snapshot (Story 3-3)", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/❌ Job description exceeds maximum length/i)).toBeInTheDocument();
+        expect(screen.getByText(/job description exceeds maximum length/i)).toBeInTheDocument();
         expect(screen.getByText(/120,000\/100,000 characters/i)).toBeInTheDocument();
         expect(screen.getByText(/please reduce content/i)).toBeInTheDocument();
       });
@@ -399,7 +399,7 @@ describe("ApplicationDetail - JD Snapshot (Story 3-3)", () => {
 
       await waitFor(() => {
         // Error message should appear
-        expect(screen.getByText(/failed to save/i)).toBeInTheDocument();
+        expect(screen.getByText(/save failed|failed to save/i)).toBeInTheDocument();
         // JD content should still be in textarea (no re-entry required)
         const textarea = screen.getByPlaceholderText(/paste the full job description/i);
         expect(textarea.value).toBe(jdContent);

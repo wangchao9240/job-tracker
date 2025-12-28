@@ -137,6 +137,33 @@ export async function listProjectBullets({ supabase, userId, projectId, q, tag }
 }
 
 /**
+ * List project bullets by ID (returns only bullets owned by the user).
+ * @param {Object} params
+ * @param {Object} params.supabase - Supabase client
+ * @param {string} params.userId - User ID
+ * @param {string[]} params.ids - Bullet IDs
+ * @returns {Promise<Array>} Array of bullets in camelCase
+ */
+export async function listProjectBulletsByIds({ supabase, userId, ids }) {
+  const uniqueIds = Array.from(new Set(ids || [])).filter(Boolean);
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("project_bullets")
+    .select("*")
+    .eq("user_id", userId)
+    .in("id", uniqueIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map(toCamelCase);
+}
+
+/**
  * Update a project bullet by ID (returns null if not found or not owned)
  * @param {Object} params
  * @param {Object} params.supabase - Supabase client

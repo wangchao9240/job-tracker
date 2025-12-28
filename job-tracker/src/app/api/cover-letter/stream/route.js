@@ -14,12 +14,50 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getApplicationById } from '@/lib/server/db/applicationsRepo';
-import { getProjectBulletById } from '@/lib/server/db/projectBulletsRepo';
-import { createDraftVersion } from '@/lib/server/db/coverLetterVersionsRepo';
+import { listProjectBulletsByIds } from '@/lib/server/db/projectBulletsRepo';
+import { createDraftVersion, createPreviewVersion } from '@/lib/server/db/coverLetterVersionsRepo';
+import { constraintsSchema } from './schemas';
+
+function logJson(level, message, fields = {}) {
+  const payload = { level, message, ...fields };
+  if (level === 'error') {
+    console.error(JSON.stringify(payload));
+    return;
+  }
+  if (level === 'warn') {
+    console.warn(JSON.stringify(payload));
+    return;
+  }
+  console.log(JSON.stringify(payload));
+}
+
+function firstToken(value) {
+  return String(value || '')
+    .split('#')[0]
+    .trim()
+    .split(/\s+/)[0]
+    .trim();
+}
+
+function buildChatCompletionsUrl(baseUrl) {
+  const trimmed = String(baseUrl || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+  if (trimmed.endsWith('/chat/completions')) return trimmed;
+  const withV1 = trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+  return `${withV1}/chat/completions`;
+}
+
+function truncateText(value, maxLen) {
+  const text = String(value || '');
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen)}…`;
+}
 
 // Request validation schema
 const requestSchema = z.object({
   applicationId: z.string().uuid('Invalid application ID format'),
+  mode: z.enum(['grounded', 'preview']).default('grounded'),
+  constraints: constraintsSchema.optional(),
 });
 
 /**
@@ -35,9 +73,9 @@ export async function POST(request) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    console.error('Unauthorized request to /api/cover-letter/stream:', JSON.stringify({
-      error: authError?.message
-    }));
+    logJson('error', 'Unauthorized request to /api/cover-letter/stream', {
+      error: authError?.message,
+    });
 
     // Return a non-stream 401 response
     return new Response(
@@ -61,10 +99,10 @@ export async function POST(request) {
     const validation = requestSchema.safeParse(body);
 
     if (!validation.success) {
-      console.error('Invalid request body:', JSON.stringify({
+      logJson('warn', 'Invalid request body for /api/cover-letter/stream', {
+        userId: user.id,
         errors: validation.error.errors,
-        userId: user.id
-      }));
+      });
 
       return new Response(
         JSON.stringify({
@@ -82,21 +120,20 @@ export async function POST(request) {
       );
     }
 
-    const { applicationId } = validation.data;
+    const { applicationId, mode, constraints } = validation.data;
 
     // 3. Load application
-    const { data: application, error: appError } = await getApplicationById({
+    const application = await getApplicationById({
       supabase,
       userId: user.id,
       id: applicationId,
     });
 
-    if (appError || !application) {
-      console.error('Application not found:', JSON.stringify({
+    if (!application) {
+      logJson('warn', 'Application not found or access denied', {
         applicationId,
         userId: user.id,
-        error: appError
-      }));
+      });
 
       return new Response(
         JSON.stringify({
@@ -115,10 +152,10 @@ export async function POST(request) {
 
     // 4. Validate prerequisites
     if (!application.jdSnapshot) {
-      console.warn('Missing JD snapshot:', JSON.stringify({
+      logJson('warn', 'Missing JD snapshot', {
         applicationId,
-        userId: user.id
-      }));
+        userId: user.id,
+      });
 
       return new Response(
         JSON.stringify({
@@ -135,67 +172,73 @@ export async function POST(request) {
       );
     }
 
-    if (!application.confirmedMapping || !application.confirmedMapping.items || application.confirmedMapping.items.length === 0) {
-      console.warn('Missing confirmed mapping:', JSON.stringify({
-        applicationId,
-        userId: user.id
-      }));
+    // Confirmed mapping is only required for grounded mode
+    if (mode === 'grounded') {
+      if (!application.confirmedMapping || !application.confirmedMapping.items || application.confirmedMapping.items.length === 0) {
+        logJson('warn', 'Missing confirmed mapping', {
+          applicationId,
+          userId: user.id,
+        });
 
-      return new Response(
-        JSON.stringify({
-          data: null,
-          error: {
-            code: 'CONFIRMED_MAPPING_REQUIRED',
-            message: 'Confirmed mapping is required. Please confirm the requirement → bullet mapping first.',
-          },
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // 5. Load selected bullets for mapping
-    const bulletIds = new Set();
-    for (const item of application.confirmedMapping.items) {
-      if (item.bulletIds && Array.isArray(item.bulletIds)) {
-        for (const bulletId of item.bulletIds) {
-          bulletIds.add(bulletId);
-        }
+        return new Response(
+          JSON.stringify({
+            data: null,
+            error: {
+              code: 'CONFIRMED_MAPPING_REQUIRED',
+              message: 'Confirmed mapping is required. Please confirm the requirement → bullet mapping first.',
+            },
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
       }
     }
 
-    const bullets = [];
-    for (const bulletId of bulletIds) {
-      const bullet = await getProjectBulletById({
+    // 5. Load selected bullets for mapping (grounded mode only)
+    let bulletMap = new Map();
+
+    if (mode === 'grounded') {
+      const bulletIds = new Set();
+      for (const item of application.confirmedMapping.items) {
+        if (item.bulletIds && Array.isArray(item.bulletIds)) {
+          for (const bulletId of item.bulletIds) {
+            bulletIds.add(bulletId);
+          }
+        }
+      }
+
+      const bullets = await listProjectBulletsByIds({
         supabase,
         userId: user.id,
-        id: bulletId,
+        ids: Array.from(bulletIds),
       });
-      if (bullet) {
-        bullets.push(bullet);
-      }
+
+      bulletMap = new Map(bullets.map((bullet) => [bullet.id, bullet]));
     }
 
-    // Build bullet lookup map
-    const bulletMap = new Map();
-    for (const bullet of bullets) {
-      bulletMap.set(bullet.id, bullet);
-    }
-
-    // 6. Build AI prompt
-    const prompt = buildCoverLetterPrompt({
-      jdSnapshot: application.jdSnapshot,
-      company: application.company,
-      role: application.role,
-      confirmedMapping: application.confirmedMapping,
-      bulletMap,
-    });
+    // 6. Build AI prompt based on mode
+    const prompt = mode === 'preview'
+      ? buildPreviewPrompt({
+          jdSnapshot: application.jdSnapshot,
+          company: application.company,
+          role: application.role,
+          constraints,
+        })
+      : buildGroundedPrompt({
+          jdSnapshot: application.jdSnapshot,
+          company: application.company,
+          role: application.role,
+          confirmedMapping: application.confirmedMapping,
+          bulletMap,
+          constraints,
+        });
 
     // 7. Call AI provider and stream response
     const stream = await streamCoverLetterGeneration({
       prompt,
+      mode,
       applicationId,
       userId: user.id,
       supabase,
@@ -210,11 +253,11 @@ export async function POST(request) {
     });
 
   } catch (err) {
-    console.error('Unexpected error in /api/cover-letter/stream:', JSON.stringify({
+    logJson('error', 'Unexpected error in /api/cover-letter/stream', {
       message: err.message,
       stack: err.stack,
-      userId: user?.id
-    }));
+      userId: user?.id,
+    });
 
     return new Response(
       JSON.stringify({
@@ -233,9 +276,9 @@ export async function POST(request) {
 }
 
 /**
- * Build the AI prompt for cover letter generation
+ * Build the AI prompt for grounded cover letter generation (with confirmed mapping)
  */
-function buildCoverLetterPrompt({ jdSnapshot, company, role, confirmedMapping, bulletMap }) {
+function buildGroundedPrompt({ jdSnapshot, company, role, confirmedMapping, bulletMap, constraints }) {
   const lines = [];
 
   lines.push('You are a professional cover letter writer. Generate a compelling cover letter for the following job application.');
@@ -272,8 +315,84 @@ function buildCoverLetterPrompt({ jdSnapshot, company, role, confirmedMapping, b
   lines.push('- Write a professional cover letter that demonstrates how my experience matches the requirements');
   lines.push('- Use the provided evidence bullets to ground your claims');
   lines.push('- Do NOT fabricate evidence for requirements marked as uncovered');
-  lines.push('- Keep the tone professional and confident');
+
+  // Apply user constraints if provided
+  if (constraints) {
+    if (constraints.tone) {
+      lines.push(`- Tone: ${constraints.tone}`);
+    } else {
+      lines.push('- Keep the tone professional and confident');
+    }
+
+    if (constraints.emphasis) {
+      lines.push(`- Emphasis: ${constraints.emphasis}`);
+    }
+
+    if (constraints.keywordsInclude && constraints.keywordsInclude.length > 0) {
+      lines.push(`- Keywords to include: ${constraints.keywordsInclude.join(', ')}`);
+    }
+
+    if (constraints.keywordsAvoid && constraints.keywordsAvoid.length > 0) {
+      lines.push(`- Keywords to avoid: ${constraints.keywordsAvoid.join(', ')}`);
+    }
+  } else {
+    lines.push('- Keep the tone professional and confident');
+  }
+
   lines.push('- Structure: Opening paragraph (interest + fit), body paragraphs (match requirements with evidence), closing paragraph (next steps)');
+  lines.push('- Length: 300-400 words');
+
+  return lines.join('\n');
+}
+
+/**
+ * Build the AI prompt for preview cover letter generation (without confirmed mapping)
+ */
+function buildPreviewPrompt({ jdSnapshot, company, role, constraints }) {
+  const lines = [];
+
+  lines.push('You are a professional cover letter writer. Generate a preview cover letter for the following job application.');
+  lines.push('');
+  lines.push('⚠️ IMPORTANT: This is a PREVIEW draft without confirmed evidence mapping.');
+  lines.push('');
+  lines.push(`**Company:** ${company}`);
+  lines.push(`**Role:** ${role}`);
+  lines.push('');
+  lines.push('**Job Description:**');
+  lines.push(jdSnapshot);
+  lines.push('');
+  lines.push('**CRITICAL INSTRUCTIONS:**');
+  lines.push('- This is a PREVIEW ONLY - no evidence has been confirmed');
+  lines.push('- DO NOT invent specific claims about projects, achievements, or experience');
+  lines.push('- Keep content GENERIC where you lack concrete evidence');
+  lines.push('- Focus on demonstrating interest in the role and understanding of requirements');
+  lines.push('- Avoid making specific claims that would require evidence to back up');
+  lines.push('- This draft is meant for tone/structure review, NOT for submission');
+
+  // Apply user constraints if provided
+  if (constraints) {
+    if (constraints.tone) {
+      lines.push(`- Tone: ${constraints.tone}`);
+    } else {
+      lines.push('- Keep the tone professional and confident');
+    }
+
+    if (constraints.emphasis) {
+      lines.push(`- Emphasis: ${constraints.emphasis}`);
+    }
+
+    if (constraints.keywordsInclude && constraints.keywordsInclude.length > 0) {
+      lines.push(`- Keywords to include: ${constraints.keywordsInclude.join(', ')}`);
+    }
+
+    if (constraints.keywordsAvoid && constraints.keywordsAvoid.length > 0) {
+      lines.push(`- Keywords to avoid: ${constraints.keywordsAvoid.join(', ')}`);
+    }
+  } else {
+    lines.push('- Keep the tone professional and confident');
+  }
+
+  lines.push('- Structure: Opening paragraph (interest + fit), body paragraphs (address key requirements generically), closing paragraph (next steps)');
   lines.push('- Length: 300-400 words');
 
   return lines.join('\n');
@@ -283,35 +402,50 @@ function buildCoverLetterPrompt({ jdSnapshot, company, role, confirmedMapping, b
  * Stream cover letter generation from AI provider
  * Returns a ReadableStream with SSE events
  */
-async function streamCoverLetterGeneration({ prompt, applicationId, userId, supabase }) {
+async function streamCoverLetterGeneration({ prompt, mode, applicationId, userId, supabase }) {
   const encoder = new TextEncoder();
   let fullContent = '';
+  let parseErrorCount = 0;
 
   return new ReadableStream({
     async start(controller) {
       try {
         // Call AI provider (using OpenAI-compatible API)
-        const apiKey = process.env.OPENAI_API_KEY;
-        const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+        const apiKey = process.env.JOB_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+        const baseUrl = process.env.JOB_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+        const model = firstToken(process.env.JOB_OPENAI_MODEL) || 'gpt-4o-mini';
 
         if (!apiKey) {
           const errorEvent = `event: error\ndata: ${JSON.stringify({
             code: 'AI_PROVIDER_NOT_CONFIGURED',
-            message: 'AI provider is not configured'
+            message: 'AI provider is not configured (missing JOB_OPENAI_API_KEY)'
           })}\n\n`;
           controller.enqueue(encoder.encode(errorEvent));
           controller.close();
           return;
         }
 
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const chatUrl = buildChatCompletionsUrl(baseUrl);
+        if (!chatUrl) {
+          const errorEvent = `event: error\ndata: ${JSON.stringify({
+            code: 'AI_PROVIDER_NOT_CONFIGURED',
+            message: 'AI provider is not configured (invalid JOB_OPENAI_BASE_URL)',
+          })}\n\n`;
+          controller.enqueue(encoder.encode(errorEvent));
+          controller.close();
+          return;
+        }
+
+        const response = await fetch(chatUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
+            'x-api-key': apiKey,
+            'api-key': apiKey,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model,
             messages: [
               {
                 role: 'user',
@@ -325,17 +459,29 @@ async function streamCoverLetterGeneration({ prompt, applicationId, userId, supa
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('AI provider error:', JSON.stringify({
+          const statusText = response.statusText || 'Unknown';
+          const providerText = await response.text().catch(() => null);
+          const providerMessage = (() => {
+            try {
+              const json = providerText ? JSON.parse(providerText) : null;
+              return json?.error?.message || json?.message || null;
+            } catch {
+              return providerText || null;
+            }
+          })();
+
+          logJson('error', 'AI provider error', {
             status: response.status,
-            statusText: response.statusText,
-            body: errorText,
-            applicationId
-          }));
+            statusText,
+            applicationId,
+          });
 
           const errorEvent = `event: error\ndata: ${JSON.stringify({
             code: 'AI_PROVIDER_ERROR',
-            message: `AI provider returned error: ${response.statusText}`
+            message: `AI provider request failed (status ${response.status} ${statusText})`,
+            ...(process.env.NODE_ENV !== 'production' && providerMessage
+              ? { details: truncateText(providerMessage, 1000) }
+              : null),
           })}\n\n`;
           controller.enqueue(encoder.encode(errorEvent));
           controller.close();
@@ -345,39 +491,54 @@ async function streamCoverLetterGeneration({ prompt, applicationId, userId, supa
         // Process streaming response
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          buffer += decoder.decode(value, { stream: true });
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
+          while (true) {
+            const newlineIndex = buffer.indexOf('\n');
+            if (newlineIndex === -1) break;
 
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
+            const rawLine = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+            const line = rawLine.trim();
+            if (!line) continue;
+            if (!line.startsWith('data: ')) continue;
 
-                if (content) {
-                  fullContent += content;
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
 
-                  // Send delta event to client
-                  const deltaEvent = `event: delta\ndata: ${JSON.stringify({ content })}\n\n`;
-                  controller.enqueue(encoder.encode(deltaEvent));
-                }
-              } catch (parseError) {
-                console.warn('Failed to parse SSE chunk:', data);
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+
+              if (content) {
+                fullContent += content;
+
+                // Send delta event to client
+                const deltaEvent = `event: delta\ndata: ${JSON.stringify({ content })}\n\n`;
+                controller.enqueue(encoder.encode(deltaEvent));
               }
+            } catch (parseError) {
+              parseErrorCount += 1;
             }
           }
         }
 
-        // Persist the final content as latest draft
-        const { data: draftVersion, error: persistError } = await createDraftVersion({
+        if (parseErrorCount > 0) {
+          logJson('warn', 'AI stream parse errors', {
+            applicationId,
+            count: parseErrorCount,
+          });
+        }
+
+        // Persist the final content as latest draft or preview
+        const createVersionFn = mode === 'preview' ? createPreviewVersion : createDraftVersion;
+        const { data: version, error: persistError } = await createVersionFn({
           supabase,
           userId,
           applicationId,
@@ -385,14 +546,17 @@ async function streamCoverLetterGeneration({ prompt, applicationId, userId, supa
         });
 
         if (persistError) {
-          console.error('Failed to persist draft:', JSON.stringify({
+          logJson('error', 'Failed to persist cover letter version', {
+            applicationId,
+            mode,
             error: persistError,
-            applicationId
-          }));
+          });
 
           const errorEvent = `event: error\ndata: ${JSON.stringify({
             code: 'PERSIST_FAILED',
-            message: 'Failed to save draft. Please try again.'
+            message: `Failed to save ${mode} version. Please try again.`
+            ,
+            ...(process.env.NODE_ENV !== 'production' ? { details: persistError } : null),
           })}\n\n`;
           controller.enqueue(encoder.encode(errorEvent));
           controller.close();
@@ -401,18 +565,19 @@ async function streamCoverLetterGeneration({ prompt, applicationId, userId, supa
 
         // Send done event with metadata
         const doneEvent = `event: done\ndata: ${JSON.stringify({
-          draftId: draftVersion.id,
+          draftId: version.id,
+          kind: version.kind,
           applicationId,
         })}\n\n`;
         controller.enqueue(encoder.encode(doneEvent));
         controller.close();
 
       } catch (error) {
-        console.error('Stream generation error:', JSON.stringify({
+        logJson('error', 'Stream generation error', {
           message: error.message,
           stack: error.stack,
-          applicationId
-        }));
+          applicationId,
+        });
 
         const errorEvent = `event: error\ndata: ${JSON.stringify({
           code: 'GENERATION_FAILED',

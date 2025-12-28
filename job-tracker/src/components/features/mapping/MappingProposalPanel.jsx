@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,106 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function MappingProposalPanel({ applicationId }) {
   const router = useRouter();
   const [proposal, setProposal] = useState(null);
+  const [bulletsById, setBulletsById] = useState(null);
+  const [prereqStatus, setPrereqStatus] = useState("idle"); // idle | loading | ready | blocked | error
+  const [prereqMessage, setPrereqMessage] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState(null);
+
+  const canPropose = useMemo(() => {
+    return prereqStatus === "ready" && Boolean(applicationId);
+  }, [prereqStatus, applicationId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrereqs() {
+      if (!applicationId) {
+        setPrereqStatus("idle");
+        setPrereqMessage(null);
+        setBulletsById(null);
+        return;
+      }
+
+      try {
+        setPrereqStatus("loading");
+        setPrereqMessage(null);
+
+        const [appRes, bulletsRes] = await Promise.all([
+          fetch(`/api/applications/${applicationId}`),
+          fetch("/api/project-bullets"),
+        ]);
+
+        if (cancelled) return;
+
+        if (appRes.status === 401 || bulletsRes.status === 401) {
+          router.replace("/sign-in");
+          return;
+        }
+
+        const [appJson, bulletsJson] = await Promise.all([appRes.json(), bulletsRes.json()]);
+
+        if (cancelled) return;
+
+        if (appJson?.error) {
+          setPrereqStatus("error");
+          setPrereqMessage(appJson.error.code === "NOT_FOUND" ? "Application not found." : "Failed to load application.");
+          return;
+        }
+
+        if (bulletsJson?.error) {
+          setPrereqStatus("error");
+          setPrereqMessage("Failed to load bullets.");
+          return;
+        }
+
+        const extractedRequirements = appJson?.data?.extractedRequirements;
+        const hasRequirements =
+          extractedRequirements &&
+          typeof extractedRequirements === "object" &&
+          (Array.isArray(extractedRequirements.responsibilities) ||
+            Array.isArray(extractedRequirements.requirements)) &&
+          ((extractedRequirements.responsibilities?.length || 0) > 0 ||
+            (extractedRequirements.requirements?.length || 0) > 0);
+
+        const bullets = bulletsJson?.data || [];
+        const hasBullets = Array.isArray(bullets) && bullets.length > 0;
+
+        if (!hasRequirements || !hasBullets) {
+          setPrereqStatus("blocked");
+          if (!hasRequirements && !hasBullets) {
+            setPrereqMessage("Requirements and bullets are required before proposing a mapping.");
+          } else if (!hasRequirements) {
+            setPrereqMessage("Extract requirements first before proposing a mapping.");
+          } else {
+            setPrereqMessage("Create at least one bullet before proposing a mapping.");
+          }
+          setBulletsById(null);
+          return;
+        }
+
+        const map = {};
+        for (const bullet of bullets) {
+          if (bullet?.id) {
+            map[bullet.id] = bullet;
+          }
+        }
+
+        setBulletsById(map);
+        setPrereqStatus("ready");
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load mapping prerequisites:", err);
+        setPrereqStatus("error");
+        setPrereqMessage("Failed to load prerequisites.");
+      }
+    }
+
+    loadPrereqs();
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId, router]);
 
   async function handleProposeMapping() {
     try {
@@ -56,9 +154,7 @@ export function MappingProposalPanel({ applicationId }) {
   }
 
   function handleProceedToAdjust() {
-    // Story 5.5 will implement full mapping workbench
-    // For now, this is just a navigation stub
-    alert("Mapping workbench will be available in Story 5.5");
+    router.push(`/mapping?applicationId=${encodeURIComponent(applicationId)}`);
   }
 
   return (
@@ -68,7 +164,7 @@ export function MappingProposalPanel({ applicationId }) {
         {!proposal && (
           <Button
             onClick={handleProposeMapping}
-            disabled={status === "loading" || !applicationId}
+            disabled={status === "loading" || !canPropose}
           >
             {status === "loading" ? "Generating..." : "Propose Mapping"}
           </Button>
@@ -78,6 +174,16 @@ export function MappingProposalPanel({ applicationId }) {
       {!applicationId && (
         <p className="text-muted-foreground">
           No application selected. Please select an application to generate mapping proposal.
+        </p>
+      )}
+
+      {applicationId && prereqStatus === "loading" && (
+        <p className="text-muted-foreground">Checking prerequisites…</p>
+      )}
+
+      {applicationId && prereqMessage && (
+        <p className={prereqStatus === "error" ? "text-destructive" : "text-muted-foreground"}>
+          {prereqMessage}
         </p>
       )}
 
@@ -104,7 +210,7 @@ export function MappingProposalPanel({ applicationId }) {
         <>
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {proposal.length} requirement{proposal.length !== 1 ? "s" : ""} mapped
+              {proposal.length} item{proposal.length !== 1 ? "s" : ""} mapped
             </p>
             <div className="flex gap-2">
               <Button onClick={handleRetry} variant="outline" size="sm">
@@ -142,17 +248,26 @@ export function MappingProposalPanel({ applicationId }) {
                           key={bulletId}
                           className="p-2 rounded bg-muted text-sm flex items-start justify-between"
                         >
-                          <span className="flex-1">
-                            Bullet ID: {bulletId}
-                            <span className="text-xs text-muted-foreground ml-2">
-                              (Score: {item.scoreByBulletId[bulletId]})
-                            </span>
-                          </span>
+                          <div className="flex-1">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-medium">
+                                {bulletsById?.[bulletId]?.title || "Bullet"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {bulletId}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Score: {item.scoreByBulletId[bulletId]}
+                              </span>
+                            </div>
+                            {bulletsById?.[bulletId]?.text && (
+                              <p className="text-muted-foreground mt-1">
+                                {bulletsById[bulletId].text}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       ))}
-                      <p className="text-xs text-muted-foreground">
-                        💡 Tip: Scores are based on keyword overlap and tag matches. Higher scores indicate better matches.
-                      </p>
                     </div>
                   )}
                 </CardContent>

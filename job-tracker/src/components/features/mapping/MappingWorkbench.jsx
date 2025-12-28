@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,14 +12,29 @@ import { Label } from "@/components/ui/label";
  * @param {string} applicationId - Application ID to work with
  * @param {Object} application - Full application object (optional, for initial load)
  */
-export function MappingWorkbench({ applicationId, application: initialApplication }) {
+export function MappingWorkbench({ applicationId, application: initialApplication, onUpdate }) {
   const router = useRouter();
   const [application, setApplication] = useState(initialApplication);
   const [proposal, setProposal] = useState(null);
   const [availableBullets, setAvailableBullets] = useState([]);
   const [mappingState, setMappingState] = useState([]); // Working state for edits
   const [status, setStatus] = useState("idle"); // idle | loading | saving | saved | error
+  const [bulletsStatus, setBulletsStatus] = useState("idle"); // idle | loading | loaded | error
   const [error, setError] = useState(null);
+  const [errorContext, setErrorContext] = useState(null); // loadApplication | loadBullets | loadProposal | saveMapping
+  const didAutoLoadProposal = useRef(false);
+
+  useEffect(() => {
+    didAutoLoadProposal.current = false;
+    setApplication(initialApplication || null);
+    setProposal(null);
+    setAvailableBullets([]);
+    setMappingState([]);
+    setStatus("idle");
+    setBulletsStatus("idle");
+    setError(null);
+    setErrorContext(null);
+  }, [applicationId, initialApplication]);
 
   // Load application if not provided
   useEffect(() => {
@@ -28,6 +43,12 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
     }
   }, [applicationId, initialApplication]);
 
+  useEffect(() => {
+    if (applicationId) {
+      loadBullets();
+    }
+  }, [applicationId]);
+
   // Initialize mapping state when application or proposal loads
   useEffect(() => {
     if (application) {
@@ -35,8 +56,25 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
     }
   }, [application, proposal]);
 
+  useEffect(() => {
+    const hasRequirements =
+      application?.extractedRequirements &&
+      (application.extractedRequirements.responsibilities?.length > 0 ||
+        application.extractedRequirements.requirements?.length > 0);
+
+    const hasBullets = bulletsStatus === "loaded" && availableBullets.length > 0;
+
+    if (!applicationId || !application || !hasRequirements || !hasBullets) return;
+    if (proposal) return;
+    if (didAutoLoadProposal.current) return;
+
+    didAutoLoadProposal.current = true;
+    loadProposal();
+  }, [applicationId, application, bulletsStatus, availableBullets.length, proposal]);
+
   async function loadApplication() {
     try {
+      setErrorContext("loadApplication");
       setStatus("loading");
       const response = await fetch(`/api/applications/${applicationId}`);
 
@@ -61,12 +99,50 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
     }
   }
 
-  async function loadProposalAndBullets() {
+  async function loadBullets() {
     try {
+      setErrorContext("loadBullets");
+      if (status !== "saving") {
+        setStatus("loading");
+      }
+      setError(null);
+      setBulletsStatus("loading");
+
+      const bulletsResponse = await fetch("/api/project-bullets");
+      if (bulletsResponse.status === 401) {
+        router.replace("/sign-in");
+        return;
+      }
+
+      const bulletsResult = await bulletsResponse.json();
+      if (bulletsResult.error) {
+        setAvailableBullets([]);
+        setBulletsStatus("error");
+        setError("Failed to load bullets.");
+        setStatus("error");
+        return;
+      }
+
+      setAvailableBullets(bulletsResult.data || []);
+      setBulletsStatus("loaded");
+      if (status !== "saving") {
+        setStatus("idle");
+      }
+    } catch (err) {
+      console.error("Failed to load bullets:", err);
+      setAvailableBullets([]);
+      setBulletsStatus("error");
+      setError("Failed to load bullets.");
+      setStatus("error");
+    }
+  }
+
+  async function loadProposal() {
+    try {
+      setErrorContext("loadProposal");
       setStatus("loading");
       setError(null);
 
-      // Load mapping proposal
       const propResponse = await fetch("/api/mapping/propose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,19 +162,6 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
       }
 
       setProposal(propResult.data.proposal);
-
-      // Load all available bullets (for adding more)
-      const bulletsResponse = await fetch("/api/project-bullets");
-      if (bulletsResponse.status === 401) {
-        router.replace("/sign-in");
-        return;
-      }
-
-      const bulletsResult = await bulletsResponse.json();
-      if (!bulletsResult.error) {
-        setAvailableBullets(bulletsResult.data || []);
-      }
-
       setStatus("idle");
     } catch (err) {
       console.error("Failed to load proposal:", err);
@@ -109,6 +172,7 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
 
   function initializeMappingState() {
     if (!application) return;
+    if (mappingState.length > 0) return;
 
     // If confirmed mapping exists, use it
     if (application.confirmedMapping && application.confirmedMapping.items) {
@@ -191,6 +255,7 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
 
   async function handleConfirmMapping() {
     try {
+      setErrorContext("saveMapping");
       setStatus("saving");
       setError(null);
 
@@ -220,6 +285,7 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
       }
 
       setApplication(result.data);
+      onUpdate?.(result.data);
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 2000);
     } catch (err) {
@@ -230,11 +296,19 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
   }
 
   function handleRetry() {
-    if (error.includes("load")) {
+    if (errorContext === "loadApplication") {
       loadApplication();
-    } else {
-      handleConfirmMapping();
+      return;
     }
+    if (errorContext === "loadBullets") {
+      loadBullets();
+      return;
+    }
+    if (errorContext === "loadProposal") {
+      loadProposal();
+      return;
+    }
+    handleConfirmMapping();
   }
 
   // Check for blocking conditions
@@ -243,7 +317,7 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
     (application.extractedRequirements.responsibilities?.length > 0 ||
       application.extractedRequirements.requirements?.length > 0);
 
-  const hasBullets = availableBullets.length > 0;
+  const bulletsMissing = bulletsStatus === "loaded" && availableBullets.length === 0;
 
   if (!application && status === "loading") {
     return <p className="text-muted-foreground">Loading application...</p>;
@@ -258,7 +332,23 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
             <p className="text-destructive mb-4">
               This application has no extracted requirements. Please extract requirements first before mapping.
             </p>
-            <Button onClick={() => router.push(`/applications/${applicationId}`)}>Go to Application</Button>
+            <Button onClick={() => router.push("/")}>Go to Applications</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (bulletsMissing) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">Mapping Workbench</h2>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-destructive mb-4">
+              You have no project bullets yet. Create bullets first, then return to confirm your mapping.
+            </p>
+            <Button onClick={() => router.push("/bullets")}>Create Bullets</Button>
           </CardContent>
         </Card>
       </div>
@@ -272,7 +362,7 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
         <Card>
           <CardContent className="p-6">
             <p className="mb-4">No mapping proposal loaded. Generate a proposal to get started.</p>
-            <Button onClick={loadProposalAndBullets} disabled={status === "loading"}>
+            <Button onClick={loadProposal} disabled={status === "loading"}>
               {status === "loading" ? "Loading..." : "Generate Proposal"}
             </Button>
           </CardContent>
@@ -286,11 +376,9 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Mapping Workbench</h2>
         <div className="flex gap-2">
-          {!proposal && (
-            <Button onClick={loadProposalAndBullets} variant="outline" size="sm" disabled={status === "loading"}>
-              {status === "loading" ? "Loading..." : "Reload Proposal"}
-            </Button>
-          )}
+          <Button onClick={loadProposal} variant="outline" size="sm" disabled={status === "loading" || status === "saving"}>
+            {status === "loading" && errorContext === "loadProposal" ? "Loading..." : "Load Proposal"}
+          </Button>
           <Button onClick={handleConfirmMapping} disabled={status === "saving"}>
             {status === "saving" ? "Saving..." : "Confirm Mapping"}
           </Button>
@@ -307,16 +395,6 @@ export function MappingWorkbench({ applicationId, application: initialApplicatio
       )}
 
       {status === "saved" && <p className="text-green-600 dark:text-green-400">Mapping saved successfully!</p>}
-
-      {!hasBullets && (
-        <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-          <CardContent className="p-4">
-            <p className="text-sm">
-              ⚠️ You have no project bullets yet. Consider creating bullets before mapping for better results.
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="space-y-4">
         {mappingState.map((item, index) => (
@@ -344,7 +422,9 @@ function MappingItem({ item, index, proposal, availableBullets, onToggleUncovere
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Find suggestions from proposal
-  const proposalItem = proposal?.find((p) => p.itemKey === item.itemKey);
+  const proposalItem =
+    proposal?.find((p) => p.itemKey === item.itemKey) ||
+    proposal?.find((p) => p.kind === item.kind && p.text === item.text);
   const suggestedBulletIds = proposalItem?.suggestedBulletIds || [];
   const unselectedSuggestions = suggestedBulletIds.filter((id) => !item.bulletIds.includes(id));
 

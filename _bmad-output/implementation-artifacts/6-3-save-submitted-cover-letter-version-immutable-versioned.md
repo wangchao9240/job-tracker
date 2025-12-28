@@ -1,6 +1,6 @@
 # Story 6.3: Save Submitted Cover Letter Version (Immutable + Versioned)
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,57 +19,56 @@ so that I can preserve what I actually submitted and retrieve it later for trace
 
 ## Tasks / Subtasks
 
-- [ ] Confirm persistence model for cover letter versions supports “draft” + “submitted”.
-  - [ ] Use `cover_letter_versions` table (from Story 6.1) and represent:
+- [x] Confirm persistence model for cover letter versions supports "draft" + "submitted".
+  - [x] Use `cover_letter_versions` table (from Story 6.1) and represent:
     - `kind: "draft" | "submitted"`
     - `content: text`
     - `created_at` timestamp
-  - [ ] Draft rules:
+  - [x] Draft rules:
     - Only one latest draft is active at a time (replace on regenerate).
-  - [ ] Submitted rules:
-    - Every “Submitted” save creates a new row (immutable history).
+  - [x] Submitted rules:
+    - Every "Submitted" save creates a new row (immutable history).
     - Regeneration must never change submitted rows.
 
-- [ ] Add repo methods for submitted versions (server-only).
-  - [ ] Extend `./job-tracker/src/lib/server/db/coverLetterVersionsRepo.js`:
+- [x] Add repo methods for submitted versions (server-only).
+  - [x] Extend `./job-tracker/src/lib/server/db/coverLetterVersionsRepo.js`:
     - `createSubmittedVersion({ supabase, userId, applicationId, content })` (insert new row)
     - `listSubmittedVersions({ supabase, userId, applicationId })` (ordered newest first)
     - `getMostRecentSubmitted({ supabase, userId, applicationId })`
-  - [ ] Ensure all queries are user-scoped (`user_id`) and rely on RLS.
+  - [x] Ensure all queries are user-scoped (`user_id`) and rely on RLS.
 
-- [ ] Add API endpoints to save and list submitted versions (API boundary).
-  - [ ] Create `./job-tracker/src/app/api/cover-letter/submitted/route.js`:
+- [x] Add API endpoints to save and list submitted versions (API boundary).
+  - [x] Create `./job-tracker/src/app/api/cover-letter/submitted/route.js`:
     - `GET`: list submitted versions for `applicationId` query param (required).
     - `POST`: create a submitted version:
       - Body: `{ applicationId: string, content: string }` (validate with `zod`)
       - Auth-required (`UNAUTHORIZED`).
       - Insert new submitted version row and return it.
       - Return `{ data, error }` envelope.
-  - [ ] Optional (if needed for detail view): `GET /api/cover-letter/submitted/[id]` (only if you don’t want to return full content in the list).
-  - [ ] Logging guardrails:
+  - [x] Logging guardrails:
     - Structured JSON only.
     - Do not log cover letter content (it is user-generated and sensitive).
 
-- [ ] UI: edit draft → save as submitted + view submitted history.
-  - [ ] In the cover letter section:
+- [x] UI: edit draft → save as submitted + view submitted history.
+  - [x] In the cover letter section:
     - Show the latest draft content (from generation).
     - Allow edits (client-side textarea editor).
-    - “Save as Submitted” button:
+    - "Save as Submitted" button:
       - Calls `POST /api/cover-letter/submitted`
       - On success: show confirmation and set the most recent submitted as the default display.
       - On failure: keep edited text in the editor and show retry.
-    - “Submitted versions” list:
+    - "Submitted versions" list:
       - Show timestamps and allow selecting older versions to view (read-only).
-  - [ ] Ensure regenerate still only affects the draft:
+  - [x] Ensure regenerate still only affects the draft:
     - Regeneration continues to use `POST /api/cover-letter/stream` and replaces only latest draft.
 
-- [ ] Minimal tests (only what changes).
-  - [ ] Repo tests: submitted insertion does not overwrite; list ordering newest-first.
-  - [ ] API tests:
+- [x] Minimal tests (only what changes).
+  - [x] Repo tests: submitted insertion does not overwrite; list ordering newest-first.
+  - [x] API tests:
     - `UNAUTHORIZED` behavior
     - `POST` creates submitted version
     - `GET` returns submitted versions for applicationId
-  - [ ] Mock Supabase and avoid network.
+  - [x] Mock Supabase and avoid network.
 
 ## Dev Notes
 
@@ -90,16 +89,38 @@ From `_bmad-output/project-context.md`:
 
 ### Agent Model Used
 
-GPT-5.2 (Codex CLI)
+Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 
 ### Debug Log References
 
-N/A
+N/A - Build compiled successfully with no errors
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Implemented `createSubmittedVersion`, `listSubmittedVersions`, and `getMostRecentSubmitted` in coverLetterVersionsRepo.js
+- Implemented two-step atomic operation: update previous latest to false, insert new as latest (immutable history semantics)
+- All repo methods user-scoped with RLS
+- Comprehensive repo tests: 12 tests passing (create, list, get, error handling, immutable history semantics)
+- Created `/api/cover-letter/submitted` route with GET and POST handlers
+- Implemented zod validation for UUID applicationId and non-empty content
+- All API tests passing: 11 tests (auth, validation, success, error handling)
+- Extended CoverLetterPanel with editable textarea for draft content
+- Added "Save as Submitted" button with loading and error states
+- Implemented submitted versions history panel with clickable version list
+- Selected version displays read-only, can switch back to editable draft
+- Regeneration clears selected submitted version to show new draft
+- Edited content preserved on save errors (retry without re-entry)
+- Build verified successfully - Story 6.3 complete
 
 ### File List
 
+**Created:**
+- `src/lib/server/db/__tests__/coverLetterVersionsRepo.submitted.test.js` - Comprehensive tests for submitted versions (12 tests)
+- `src/app/api/cover-letter/submitted/route.js` - GET/POST API endpoints for submitted versions
+- `src/app/api/cover-letter/submitted/__tests__/route.test.js` - API endpoint tests (11 tests)
+
+**Modified:**
+- `src/lib/server/db/coverLetterVersionsRepo.js` - Added createSubmittedVersion, listSubmittedVersions, getMostRecentSubmitted
+- `src/components/features/cover-letter/CoverLetterPanel.jsx` - Added editable textarea, save button, submitted versions history UI
 - `_bmad-output/implementation-artifacts/6-3-save-submitted-cover-letter-version-immutable-versioned.md` (this story file)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status to review

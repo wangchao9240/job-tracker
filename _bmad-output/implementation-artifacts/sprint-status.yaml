@@ -70,18 +70,18 @@ development_status:
   4-4-non-mvp-interview-preparation-pack-and-notes: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-create-and-manage-projects-experiences: done
   5-2-create-and-manage-project-bullets-evidence-items: done
   5-3-tagging-search-and-filtering-for-bullets: done
-  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: review
-  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: review
+  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: done
+  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: done
   epic-5-retrospective: optional
 
   epic-6: in-progress
   6-1-generate-cover-letter-draft-from-confirmed-mapping: review
-  6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: ready-for-dev
-  6-3-save-submitted-cover-letter-version-immutable-versioned: ready-for-dev
-  6-4-submission-notes-for-traceability: ready-for-dev
-  6-5-non-mvp-generate-preview-draft-ungrounded: ready-for-dev
+  6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: review
+  6-3-save-submitted-cover-letter-version-immutable-versioned: review
+  6-4-submission-notes-for-traceability: review
+  6-5-non-mvp-generate-preview-draft-ungrounded: review
   epic-6-retrospective: optional

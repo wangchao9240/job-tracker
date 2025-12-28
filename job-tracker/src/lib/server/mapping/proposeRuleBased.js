@@ -110,10 +110,17 @@ export function proposeMapping({ items, bullets }) {
     return [];
   }
 
+  const kindCounters = new Map();
+  function nextItemKey(kind) {
+    const current = kindCounters.get(kind) ?? 0;
+    kindCounters.set(kind, current + 1);
+    return `${kind}-${current}`;
+  }
+
   if (!bullets || bullets.length === 0) {
     // No bullets available - return empty suggestions for all items
-    return items.map((item, index) => ({
-      itemKey: `${item.kind}-${index}`,
+    return items.map((item) => ({
+      itemKey: nextItemKey(item.kind),
       kind: item.kind,
       text: item.text,
       suggestedBulletIds: [],
@@ -139,8 +146,8 @@ export function proposeMapping({ items, bullets }) {
   });
 
   // Process each item to generate mapping proposals
-  return items.map((item, index) => {
-    const itemKey = `${item.kind}-${index}`;
+  return items.map((item) => {
+    const itemKey = nextItemKey(item.kind);
     const normalizedItem = normalizeText(item.text);
     const itemTokens = tokenize(normalizedItem);
 
@@ -157,7 +164,11 @@ export function proposeMapping({ items, bullets }) {
     // Select top N bullets above threshold
     const rankedBullets = Object.entries(scoreByBulletId)
       .filter(([_, score]) => score >= MIN_SCORE_THRESHOLD)
-      .sort((a, b) => b[1] - a[1]) // Sort by score descending
+      .sort((a, b) => {
+        const scoreDiff = b[1] - a[1];
+        if (scoreDiff !== 0) return scoreDiff;
+        return a[0].localeCompare(b[0]);
+      })
       .slice(0, MAX_SUGGESTIONS)
       .map(([bulletId, _]) => bulletId);
 

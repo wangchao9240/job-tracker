@@ -124,7 +124,7 @@ describe("confirmedMapping schema validation", () => {
 
       const result = confirmedMappingSchema.safeParse(invalidMapping);
       expect(result.success).toBe(false);
-      expect(result.error.errors[0].path).toContain("version");
+      expect(result.error.issues[0].path).toContain("version");
     });
 
     test("should reject missing version", () => {

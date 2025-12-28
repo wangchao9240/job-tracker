@@ -129,20 +129,25 @@ N/A - Build completed successfully with no errors
 - Integrated OpenAI-compatible API for cover letter generation with full prompt construction from JD + confirmed mapping + bullets
 - Created `CoverLetterPanel` component with progressive streaming rendering and clear prerequisite checks
 - Added `GET /api/cover-letter/latest` endpoint for fetching latest draft version
-- Documented streaming behavior and repo semantics with comprehensive test files
-- Build verified successfully - both new endpoints registered and functional
+- Wired `CoverLetterPanel` into the application workspace (`ApplicationDetail`)
+- Fixed `/api/cover-letter/stream` to use correct repo contracts and batch bullet loading
+- Hardened SSE parsing and removed raw-stream logging
+- Replaced placeholder "documentation tests" with real Jest tests for repo + streaming endpoint
+- Targeted Jest suite verified (cover-letter stream + repo)
 
 ### File List
 
 **Created:**
-- `supabase/migrations/0013_cover_letter_versions.sql` - Database migration for cover letter versions table
-- `src/lib/server/db/coverLetterVersionsRepo.js` - Server repo for managing cover letter versions (createDraftVersion, getLatestDraft, createSubmittedVersion stub)
-- `src/app/api/cover-letter/stream/route.js` - Streaming generation endpoint with SSE protocol
-- `src/app/api/cover-letter/latest/route.js` - Fetch latest draft endpoint
-- `src/components/features/cover-letter/CoverLetterPanel.jsx` - Client UI for cover letter generation with streaming
-- `src/lib/server/db/__tests__/coverLetterVersionsRepo.test.js` - Repo tests documenting latest draft semantics
-- `src/app/api/cover-letter/stream/__tests__/route.test.js` - Streaming endpoint test documentation
+- `job-tracker/supabase/migrations/0013_cover_letter_versions.sql` - Database migration for cover letter versions table
+- `job-tracker/src/lib/server/db/coverLetterVersionsRepo.js` - Server repo for managing cover letter versions
+- `job-tracker/src/app/api/cover-letter/stream/route.js` - Streaming generation endpoint with SSE protocol
+- `job-tracker/src/app/api/cover-letter/latest/route.js` - Fetch latest draft endpoint
+- `job-tracker/src/components/features/cover-letter/CoverLetterPanel.jsx` - Client UI for cover letter generation with streaming
+- `job-tracker/src/lib/server/db/__tests__/coverLetterVersionsRepo.test.js` - Repo tests for latest semantics
+- `job-tracker/src/app/api/cover-letter/stream/__tests__/route.test.js` - Streaming endpoint tests
 
 **Modified:**
 - `_bmad-output/implementation-artifacts/6-1-generate-cover-letter-draft-from-confirmed-mapping.md` (this story file)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status from ready-for-dev to in-progress (now ready for review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` - Updated story status
+- `job-tracker/src/components/features/applications/ApplicationDetail.jsx` - Added Cover Letter section in workspace
+- `job-tracker/src/lib/server/db/projectBulletsRepo.js` - Added batch bullet lookup helper for prompt grounding

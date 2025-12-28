@@ -47,7 +47,7 @@ export async function POST(request) {
 
     const validation = proposeMappingSchema.safeParse(body);
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
+      const firstError = validation.error.issues[0];
       return NextResponse.json(
         {
           data: null,

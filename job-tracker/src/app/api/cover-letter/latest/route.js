@@ -3,8 +3,13 @@
  * Fetch the latest cover letter draft for an application
  */
 
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { getLatestDraft } from '@/lib/server/db/coverLetterVersionsRepo';
+import { getLatestDraftOrPreview } from '@/lib/server/db/coverLetterVersionsRepo';
+
+const querySchema = z.object({
+  applicationId: z.string().uuid('Invalid application ID format'),
+});
 
 export async function GET(request) {
   const supabase = await createClient();
@@ -34,15 +39,15 @@ export async function GET(request) {
   try {
     // Parse query parameter
     const { searchParams } = new URL(request.url);
-    const applicationId = searchParams.get('applicationId');
+    const parseResult = querySchema.safeParse({ applicationId: searchParams.get('applicationId') });
 
-    if (!applicationId) {
+    if (!parseResult.success) {
       return new Response(
         JSON.stringify({
           data: null,
           error: {
             code: 'VALIDATION_FAILED',
-            message: 'applicationId query parameter is required',
+            message: 'applicationId query parameter is required and must be a valid UUID',
           },
         }),
         {
@@ -52,8 +57,10 @@ export async function GET(request) {
       );
     }
 
+    const { applicationId } = parseResult.data;
+
     // Fetch latest draft
-    const { data, error } = await getLatestDraft({
+    const { data, error } = await getLatestDraftOrPreview({
       supabase,
       userId: user.id,
       applicationId,

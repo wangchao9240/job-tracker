@@ -1,6 +1,6 @@
 # Story 5.5: Mapping Workbench — Review, Confirm, and Persist Mapping (Including Uncovered Requirements)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -121,21 +121,25 @@ Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
 
 - Defined canonical confirmedMapping schema (version 1) with Zod validation
 - Extended PATCH /api/applications/[id] to accept confirmedMapping with atomic updates
-- Created comprehensive MappingWorkbench component (450+ lines) with full CRUD for mapping items
+- Created comprehensive MappingWorkbench component with full CRUD for mapping items
 - Implemented uncovered marking as first-class concept with visual highlighting
-- Created confirmedMapping schema tests (unit + integration expectations)
+- Added Route Handler tests covering confirmedMapping PATCH + subsequent GET
+- Fixed Zod v4 test assertions (`error.issues` vs `error.errors`)
 - Fixed Checkbox component error by using native HTML input with Tailwind styling
-- Build passed successfully (verified with `npm run build`)
-- All acceptance criteria verified and met
+- Integrated Mapping Workbench into Application Detail workspace (toggle to open)
+- Improved workbench recovery UX (missing requirements/bullets, retry routing)
+- Tests passed (Node 22 via `.nvmrc`): confirmedMapping schema + route handler tests
 
 ### File List
 
 **Created:**
 - `job-tracker/src/components/features/mapping/MappingWorkbench.jsx` - Full interactive workbench for mapping review/edit/confirm
 - `job-tracker/src/app/api/applications/__tests__/confirmedMapping.test.js` - Schema validation tests
+- `job-tracker/src/app/api/applications/[id]/__tests__/confirmedMapping.route.test.js` - Route handler tests for confirmedMapping
 
 **Modified:**
 - `job-tracker/src/app/api/applications/[id]/route.js` - Added confirmedMapping schemas to updateApplicationSchema
-- `job-tracker/src/app/mapping/page.jsx` - Updated to use MappingWorkbench component
-- `job-tracker/src/lib/server/db/applicationsRepo.js` - Already returns confirmedMapping in camelCase (no changes needed)
+- `job-tracker/src/components/features/applications/ApplicationDetail.jsx` - Embed Mapping Workbench (toggle open)
+- `job-tracker/src/components/features/applications/__tests__/ApplicationDetail.jdSnapshot.test.jsx` - Test assertions updated for current copy
+- `job-tracker/src/lib/server/mapping/proposeRuleBased.js` - itemKey generation aligned for workbench matching
 - `_bmad-output/implementation-artifacts/5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements.md` (this story file)
