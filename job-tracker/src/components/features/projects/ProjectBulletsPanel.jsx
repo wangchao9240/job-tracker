@@ -303,6 +303,32 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
           </Button>
         </div>
 
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1">
+            <Input
+              type="text"
+              placeholder="Search bullets (text, title, impact)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Input
+              type="text"
+              placeholder="Filter by tag"
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+            />
+          </div>
+          {(searchQuery || tagFilter) && (
+            <Button onClick={handleClearFilters} variant="outline">
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
         {status === "loading" && <p className="text-muted-foreground">Loading...</p>}
 
         {status === "error" && (
