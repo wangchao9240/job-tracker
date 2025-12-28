@@ -71,7 +71,7 @@ development_status:
   epic-4-retrospective: optional
 
   epic-5: in-progress
-  5-1-create-and-manage-projects-experiences: review
+  5-1-create-and-manage-projects-experiences: done
   5-2-create-and-manage-project-bullets-evidence-items: review
   5-3-tagging-search-and-filtering-for-bullets: in-progress
   5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: ready-for-dev
