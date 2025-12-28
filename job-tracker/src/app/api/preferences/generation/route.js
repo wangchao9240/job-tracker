@@ -52,7 +52,14 @@ export async function GET() {
       { status: 200 }
     );
   } catch (err) {
-    console.error("GET /api/preferences/generation error:", err);
+    console.log(
+      JSON.stringify({
+        level: "error",
+        message: "GET /api/preferences/generation error",
+        error: err.message,
+        userId: "unknown",
+      })
+    );
     return NextResponse.json(
       { data: null, error: { code: "FETCH_FAILED" } },
       { status: 500 }
@@ -106,7 +113,14 @@ export async function PUT(request) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("PUT /api/preferences/generation error:", err);
+    console.log(
+      JSON.stringify({
+        level: "error",
+        message: "PUT /api/preferences/generation error",
+        error: err.message,
+        userId: "unknown",
+      })
+    );
     return NextResponse.json(
       { data: null, error: { code: "SAVE_FAILED" } },
       { status: 500 }

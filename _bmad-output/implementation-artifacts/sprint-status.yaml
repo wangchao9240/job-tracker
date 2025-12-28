@@ -40,48 +40,48 @@ tracking_system: file-system
 story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-set-up-initial-project-from-starter-template: done
   1-2-magic-link-sign-in-and-protected-workspace: done
   1-3-sign-out-and-session-boundary: done
-  1-4-non-mvp-high-fit-preferences-settings: review
-  1-5-non-mvp-generation-preferences-settings: review
+  1-4-non-mvp-high-fit-preferences-settings: done
+  1-5-non-mvp-generation-preferences-settings: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
-  2-1-create-and-edit-application-records-with-validation-and-data-isolation: ready-for-dev
-  2-2-application-inbox-list-and-detail-view: backlog
-  2-3-search-and-filter-applications: backlog
-  2-4-application-timeline-change-history-traceability: backlog
-  2-5-non-mvp-no-response-follow-up-prompts: backlog
+  epic-2: done
+  2-1-create-and-edit-application-records-with-validation-and-data-isolation: done
+  2-2-application-inbox-list-and-detail-view: done
+  2-3-search-and-filter-applications: done
+  2-4-application-timeline-change-history-traceability: done
+  2-5-non-mvp-no-response-follow-up-prompts: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-paste-job-url-to-create-application-with-source-detection-and-best-effort-extraction: backlog
-  3-2-review-and-edit-extracted-job-fields: backlog
-  3-3-manual-jd-snapshot-paste-and-storage: backlog
-  3-4-duplicate-detection-for-job-url-and-company-role: backlog
+  epic-3: done
+  3-1-paste-job-url-to-create-application-with-source-detection-and-best-effort-extraction: done
+  3-2-review-and-edit-extracted-job-fields: done
+  3-3-manual-jd-snapshot-paste-and-storage: done
+  3-4-duplicate-detection-for-job-url-and-company-role: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-extract-responsibilities-and-requirements-from-jd-snapshot: backlog
-  4-2-edit-and-maintain-the-application-requirements-lists: backlog
-  4-3-low-signal-jd-detection-and-key-responsibility-selection: backlog
-  4-4-non-mvp-interview-preparation-pack-and-notes: backlog
+  epic-4: done
+  4-1-extract-responsibilities-and-requirements-from-jd-snapshot: done
+  4-2-edit-and-maintain-the-application-requirements-lists: done
+  4-3-low-signal-jd-detection-and-key-responsibility-selection: done
+  4-4-non-mvp-interview-preparation-pack-and-notes: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-create-and-manage-projects-experiences: backlog
-  5-2-create-and-manage-project-bullets-evidence-items: backlog
-  5-3-tagging-search-and-filtering-for-bullets: backlog
-  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: backlog
-  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: backlog
+  epic-5: in-progress
+  5-1-create-and-manage-projects-experiences: review
+  5-2-create-and-manage-project-bullets-evidence-items: review
+  5-3-tagging-search-and-filtering-for-bullets: in-progress
+  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: ready-for-dev
+  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: ready-for-dev
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-generate-cover-letter-draft-from-confirmed-mapping: backlog
-  6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: backlog
-  6-3-save-submitted-cover-letter-version-immutable-versioned: backlog
-  6-4-submission-notes-for-traceability: backlog
-  6-5-non-mvp-generate-preview-draft-ungrounded: backlog
+  epic-6: in-progress
+  6-1-generate-cover-letter-draft-from-confirmed-mapping: ready-for-dev
+  6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: ready-for-dev
+  6-3-save-submitted-cover-letter-version-immutable-versioned: ready-for-dev
+  6-4-submission-notes-for-traceability: ready-for-dev
+  6-5-non-mvp-generate-preview-draft-ungrounded: ready-for-dev
   epic-6-retrospective: optional

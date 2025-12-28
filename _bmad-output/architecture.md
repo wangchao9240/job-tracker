@@ -129,7 +129,8 @@ npx create-next-app@latest job-tracker \
 - No local Docker requirement for this workflow; migrations are applied to the remote Supabase project.
 
 **Data Modeling (MVP, hybrid):**
-- `applications` is the aggregate root for the “one job → one application record” workflow.
+- `applications` is the aggregate root for the "one job → one application record" workflow.
+- Core fields: company, role, link, status, applied_date, notes, `source` (tracking where the job was found: seek, linkedin, company, unknown; defaults to 'unknown' until ingestion is implemented in Epic 3).
 - Store high-churn, per-application AI artifacts as JSONB in `applications` for MVP speed:
   - `jd_snapshot` (text)
   - `extracted_requirements` (JSONB array; user-editable)
@@ -137,7 +138,36 @@ npx create-next-app@latest job-tracker \
 - Use normalized tables where append-only history and retrieval are core product guarantees:
   - `cover_letter_versions` (preview/final + history; references `applications`)
   - `application_status_events` (status change timeline; references `applications`)
+    - Event types: `status_changed`, `field_changed`
+    - Payload structure:
+      - `status_changed`: `{ from: string, to: string }` (old status → new status)
+      - `field_changed`: `{ field: string, from: any, to: any }` (which field changed and values)
+    - Tracked fields: company, role, link (notes and appliedDate are not tracked)
+    - Event creation: Events created atomically BEFORE application update to ensure timeline integrity
+    - If event insertion fails, application update is rolled back (entire request fails)
+    - RLS enforced: users can only read/write their own events
   - `reminders` (7-day follow-up reminders; references `applications`)
+    - Reminder types: `no_response_follow_up`
+    - Table structure:
+      - `id`, `application_id`, `user_id`, `type`, `due_at`, `dismissed_at`, `created_at`, `updated_at`
+      - Unique constraint on `(application_id, type)` for idempotent upserts
+    - Computation logic:
+      - Cron job runs periodically (configured in vercel.json)
+      - Finds applications with status="applied" AND applied_date <= 7 days ago
+      - Creates reminder with due_at = applied_date + 7 days
+      - Uses service role client to bypass RLS (scan all users' applications)
+    - Idempotency guarantee:
+      - Upsert by (application_id, type) prevents duplicates
+      - Safe to run cron multiple times
+      - Updates existing reminder if run again
+    - Dismissal:
+      - User can dismiss via UI ("Mark followed up")
+      - Sets dismissed_at timestamp
+      - Dismissed reminders excluded from active list
+    - Security:
+      - Cron endpoint requires `Authorization: Bearer $CRON_SECRET`
+      - RLS enforced: users can only read/write/dismiss their own reminders
+      - Never log CRON_SECRET value in error logs
 - Evidence library is normalized:
   - `projects`, `project_bullets` (user-owned; used by mapping).
 
@@ -174,6 +204,19 @@ npx create-next-app@latest job-tracker \
 - Use Next.js App Router Route Handlers as the primary server API boundary (`/app/api/**/route.js`).
 - The client communicates with the server via `fetch` calls to these endpoints.
 
+**Settings & Preferences (Non-MVP):**
+- `/settings` is a protected route (unauthenticated users are redirected to `/sign-in` by middleware).
+- Preferences are user-owned and persisted with RLS-first tables keyed by `user_id`:
+  - `high_fit_preferences` (job search "high-fit" hard filter preferences)
+  - `generation_preferences` (cover letter generation preferences: tone, emphasis, keywords)
+- Route Handlers expose preferences via `{ data, error }` envelopes:
+  - `GET/PUT /api/preferences/high-fit` → reads/writes `high_fit_preferences` for the current session user
+  - `GET/PUT /api/preferences/generation` → reads/writes `generation_preferences` for the current session user
+- **Generation preferences application:** When generating cover letters in Epic 6, the system will:
+  - Fetch user's `generation_preferences` via server repo
+  - Apply tone, emphasis, and keyword preferences to AI prompt construction
+  - Default values are used if user has not set preferences (tone: 'professional', emphasis/keywords: empty arrays)
+
 **AI Provider Integration (via third-party gateway):**
 - Do not rely on vendor SDKs for outbound AI calls.
 - Implement provider adapters using `fetch` for maximum control and to support a custom gateway `baseURL`.
@@ -193,7 +236,13 @@ npx create-next-app@latest job-tracker \
 
 **UI System & Layout:**
 - Tailwind CSS + shadcn/ui components.
-- Desktop-first, 3-panel workspace layout (list + record workspace + context panel) as defined in UX spec.
+- **Current Layout (Epic 2)**: 2-panel inbox layout for application management
+  - Left panel: Application list with filters (status, source, search, date range)
+  - Right panel: Detail/edit view or create form
+  - Orchestrated by `ApplicationsInbox` component (`src/components/features/applications/ApplicationsInbox.jsx`)
+  - Selection persistence via URL query parameters (`?applicationId=<uuid>`)
+  - Filter persistence via URL query parameters (`?status=...&q=...&from=...&to=...`)
+- **Future Layout (Epic 4+)**: 3-panel workspace layout (list + record workspace + context panel) as defined in UX spec, to be implemented when requirements extraction and mapping features are added.
 
 **Server State / Data Fetching:**
 - Use `@tanstack/react-query` `5.90.12` for server state: caching, retries, background refetch, and list/detail consistency.

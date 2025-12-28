@@ -1,6 +1,6 @@
 # Story 1.5: (Non-MVP) Generation Preferences Settings
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -128,12 +128,20 @@ N/A
 - Updated Settings page to include Generation Preferences section with tone selector, emphasis checkboxes, and keyword inputs
 - Settings page now fetches and saves both high-fit and generation preferences in parallel
 - Build and lint passed successfully
+- **Code review fixes applied (2025-12-27):**
+  - Updated `architecture.md` to document `generation_preferences` table, API endpoints, and how preferences are applied in Epic 6
+  - Added comprehensive unit tests: `generationPreferencesRepo.test.js` (snake_case↔camelCase mapping) and `validation.test.js` (zod schema)
+  - Enhanced error messages in Settings page with explicit retry instructions (AC2 compliance)
+  - Replaced `console.error` with structured JSON logging in API route (project-context compliance)
 - Manual verification pending
 
 ### File List
 
 - `./job-tracker/supabase/migrations/0003_generation_preferences.sql` (created - database migration)
 - `./job-tracker/src/lib/server/db/generationPreferencesRepo.js` (created - server repo)
-- `./job-tracker/src/app/api/preferences/generation/route.js` (created - API endpoint)
-- `./job-tracker/src/app/settings/page.jsx` (updated - added generation preferences section)
+- `./job-tracker/src/app/api/preferences/generation/route.js` (created - API endpoint, updated - structured logging)
+- `./job-tracker/src/app/settings/page.jsx` (updated - added generation preferences section, enhanced error messages)
+- `./job-tracker/src/lib/server/db/__tests__/generationPreferencesRepo.test.js` (created - unit tests)
+- `./job-tracker/src/app/api/preferences/generation/__tests__/validation.test.js` (created - zod validation tests)
+- `_bmad-output/architecture.md` (updated - documented generation_preferences system)
 - `_bmad-output/implementation-artifacts/1-5-non-mvp-generation-preferences-settings.md` (this story file)

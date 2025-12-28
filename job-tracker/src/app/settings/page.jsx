@@ -61,6 +61,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const [status, setStatus] = useState("loading"); // loading | idle | saving | saved | error
   const [error, setError] = useState(null);
+  const [generationStatus, setGenerationStatus] = useState("loading"); // loading | idle | unavailable | error
+  const [generationError, setGenerationError] = useState(null);
 
   // High-Fit form state
   const [roleLevels, setRoleLevels] = useState([]);
@@ -80,28 +82,23 @@ export default function SettingsPage() {
   useEffect(() => {
     async function fetchPreferences() {
       try {
-        // Fetch both preferences in parallel
-        const [highFitResponse, generationResponse] = await Promise.all([
-          fetch("/api/preferences/high-fit"),
-          fetch("/api/preferences/generation"),
-        ]);
+        const highFitResponse = await fetch("/api/preferences/high-fit", {
+          cache: "no-store",
+        });
 
-        // Handle unauthorized
-        if (highFitResponse.status === 401 || generationResponse.status === 401) {
+        if (highFitResponse.status === 401) {
           router.replace("/sign-in");
           return;
         }
 
         const highFitResult = await highFitResponse.json();
-        const generationResult = await generationResponse.json();
 
-        if (highFitResult.error || generationResult.error) {
-          setError("Failed to load preferences.");
+        if (highFitResult.error) {
+          setError("Failed to load high-fit preferences.");
           setStatus("error");
           return;
         }
 
-        // Set high-fit preferences
         const highFitPrefs = highFitResult.data;
         setRoleLevels(highFitPrefs.roleLevels || []);
         setPreferredLocations(highFitPrefs.preferredLocations || []);
@@ -110,17 +107,41 @@ export default function SettingsPage() {
         setKeywordsInclude((highFitPrefs.keywordsInclude || []).join(", "));
         setKeywordsExclude((highFitPrefs.keywordsExclude || []).join(", "));
 
-        // Set generation preferences
-        const genPrefs = generationResult.data;
-        setTone(genPrefs.tone || "professional");
-        setEmphasis(genPrefs.emphasis || []);
-        setGenKeywordsInclude((genPrefs.keywordsInclude || []).join(", "));
-        setGenKeywordsAvoid((genPrefs.keywordsAvoid || []).join(", "));
+        // Generation preferences are optional (handled best-effort so High-Fit can work independently)
+        try {
+          const generationResponse = await fetch("/api/preferences/generation", {
+            cache: "no-store",
+          });
+
+          if (generationResponse.status === 401) {
+            router.replace("/sign-in");
+            return;
+          }
+
+          if (!generationResponse.ok) {
+            setGenerationStatus("unavailable");
+          } else {
+            const generationResult = await generationResponse.json();
+            if (generationResult.error) {
+              setGenerationStatus("error");
+              setGenerationError("Failed to load generation preferences.");
+            } else {
+              const genPrefs = generationResult.data;
+              setTone(genPrefs.tone || "professional");
+              setEmphasis(genPrefs.emphasis || []);
+              setGenKeywordsInclude((genPrefs.keywordsInclude || []).join(", "));
+              setGenKeywordsAvoid((genPrefs.keywordsAvoid || []).join(", "));
+              setGenerationStatus("idle");
+            }
+          }
+        } catch {
+          setGenerationStatus("unavailable");
+        }
 
         setStatus("idle");
       } catch (err) {
         console.error("Failed to fetch preferences:", err);
-        setError("Failed to load preferences.");
+        setError("Failed to load high-fit preferences.");
         setStatus("error");
       }
     }
@@ -140,59 +161,77 @@ export default function SettingsPage() {
     e.preventDefault();
     setStatus("saving");
     setError(null);
+    setGenerationError(null);
 
     try {
-      // Save both preferences in parallel
-      const [highFitResponse, generationResponse] = await Promise.all([
-        fetch("/api/preferences/high-fit", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roleLevels,
-            preferredLocations,
-            visaFilter,
-            roleFocus,
-            keywordsInclude: keywordsInclude
-              .split(",")
-              .map((k) => k.trim())
-              .filter(Boolean),
-            keywordsExclude: keywordsExclude
-              .split(",")
-              .map((k) => k.trim())
-              .filter(Boolean),
-          }),
+      const highFitResponse = await fetch("/api/preferences/high-fit", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roleLevels,
+          preferredLocations,
+          visaFilter,
+          roleFocus,
+          keywordsInclude: keywordsInclude
+            .split(",")
+            .map((k) => k.trim())
+            .filter(Boolean),
+          keywordsExclude: keywordsExclude
+            .split(",")
+            .map((k) => k.trim())
+            .filter(Boolean),
         }),
-        fetch("/api/preferences/generation", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tone,
-            emphasis,
-            keywordsInclude: genKeywordsInclude
-              .split(",")
-              .map((k) => k.trim())
-              .filter(Boolean),
-            keywordsAvoid: genKeywordsAvoid
-              .split(",")
-              .map((k) => k.trim())
-              .filter(Boolean),
-          }),
-        }),
-      ]);
+      });
 
-      // Handle unauthorized
-      if (highFitResponse.status === 401 || generationResponse.status === 401) {
+      if (highFitResponse.status === 401) {
         router.replace("/sign-in");
         return;
       }
 
       const highFitResult = await highFitResponse.json();
-      const generationResult = await generationResponse.json();
 
-      if (highFitResult.error || generationResult.error) {
-        setError("Failed to save preferences. Please try again.");
+      if (highFitResult.error) {
+        setError("Failed to save high-fit preferences. Please try again.");
         setStatus("error");
         return;
+      }
+
+      // Generation preferences save is best-effort and must not block high-fit (Story 1.4)
+      if (generationStatus === "idle") {
+        try {
+          const generationResponse = await fetch("/api/preferences/generation", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tone,
+              emphasis,
+              keywordsInclude: genKeywordsInclude
+                .split(",")
+                .map((k) => k.trim())
+                .filter(Boolean),
+              keywordsAvoid: genKeywordsAvoid
+                .split(",")
+                .map((k) => k.trim())
+                .filter(Boolean),
+            }),
+          });
+
+          if (generationResponse.status === 401) {
+            router.replace("/sign-in");
+            return;
+          }
+
+          const generationResult = await generationResponse.json();
+          if (!generationResponse.ok || generationResult.error) {
+            setGenerationError(
+              "High-fit preferences saved, but generation preferences could not be saved."
+            );
+          }
+        } catch {
+          setGenerationError(
+            "High-fit preferences saved, but generation preferences could not be saved."
+          );
+        }
       }
 
       setStatus("saved");
@@ -200,7 +239,7 @@ export default function SettingsPage() {
       setTimeout(() => setStatus("idle"), 3000);
     } catch (err) {
       console.error("Failed to save preferences:", err);
-      setError("Failed to save preferences. Please try again.");
+      setError("Failed to save high-fit preferences. Please try again.");
       setStatus("error");
     }
   };
@@ -235,7 +274,17 @@ export default function SettingsPage() {
 
         {error && (
           <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">
+              {error} Click &quot;Save All Preferences&quot; below to retry.
+            </p>
+          </div>
+        )}
+
+        {generationError && (
+          <div className="rounded-md bg-yellow-50 p-4 dark:bg-yellow-900/20">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              {generationError} Click &quot;Save All Preferences&quot; below to retry.
+            </p>
           </div>
         )}
 
@@ -382,6 +431,22 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {generationStatus === "unavailable" && (
+              <div className="rounded-md bg-zinc-100 p-4 dark:bg-zinc-800">
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  Generation preferences are not available yet.
+                </p>
+              </div>
+            )}
+
+            {generationStatus === "error" && (
+              <div className="rounded-md bg-yellow-50 p-4 dark:bg-yellow-900/20">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Failed to load generation preferences.
+                </p>
+              </div>
+            )}
+
             {/* Tone */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -390,6 +455,7 @@ export default function SettingsPage() {
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
+                disabled={generationStatus !== "idle"}
                 className="block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
               >
                 {TONE_OPTIONS.map((option) => (
@@ -414,6 +480,7 @@ export default function SettingsPage() {
                       onChange={() =>
                         handleCheckboxChange(option.value, emphasis, setEmphasis)
                       }
+                      disabled={generationStatus !== "idle"}
                       className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
                     />
                     <span className="text-sm text-zinc-700 dark:text-zinc-300">
@@ -434,6 +501,7 @@ export default function SettingsPage() {
                 value={genKeywordsInclude}
                 onChange={(e) => setGenKeywordsInclude(e.target.value)}
                 placeholder="e.g., innovation, problem-solving, teamwork"
+                disabled={generationStatus !== "idle"}
                 className="block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
               />
             </div>
@@ -448,6 +516,7 @@ export default function SettingsPage() {
                 value={genKeywordsAvoid}
                 onChange={(e) => setGenKeywordsAvoid(e.target.value)}
                 placeholder="e.g., synergy, leverage, passionate"
+                disabled={generationStatus !== "idle"}
                 className="block w-full rounded-md border border-zinc-300 px-3 py-2 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
               />
             </div>

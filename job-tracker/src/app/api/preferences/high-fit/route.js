@@ -6,6 +6,25 @@ import {
   upsertHighFitPreferences,
 } from "@/lib/server/db/highFitPreferencesRepo";
 
+const ROLE_LEVELS = [
+  "Graduate",
+  "Junior",
+  "Entry-level",
+  "Intern",
+  "Mid",
+];
+
+const VISA_FILTERS = ["no_pr_required", "any"];
+
+const ROLE_FOCUS = [
+  "software",
+  "frontend",
+  "backend",
+  "fullstack",
+  "data",
+  "devops",
+];
+
 // Default values for preferences
 const DEFAULT_PREFERENCES = {
   roleLevels: [],
@@ -18,10 +37,10 @@ const DEFAULT_PREFERENCES = {
 
 // Validation schema for PUT request
 const preferencesSchema = z.object({
-  roleLevels: z.array(z.string()).optional(),
+  roleLevels: z.array(z.enum(ROLE_LEVELS)).optional(),
   preferredLocations: z.array(z.string()).optional(),
-  visaFilter: z.string().optional(),
-  roleFocus: z.string().optional(),
+  visaFilter: z.enum(VISA_FILTERS).optional(),
+  roleFocus: z.enum(ROLE_FOCUS).optional(),
   keywordsInclude: z.array(z.string()).optional(),
   keywordsExclude: z.array(z.string()).optional(),
 });
@@ -56,7 +75,9 @@ export async function GET() {
       { status: 200 }
     );
   } catch (err) {
-    console.error("GET /api/preferences/high-fit error:", err);
+    console.error(
+      JSON.stringify({ level: "error", code: "HIGH_FIT_PREFS_GET_FAILED" })
+    );
     return NextResponse.json(
       { data: null, error: { code: "FETCH_FAILED" } },
       { status: 500 }
@@ -110,7 +131,9 @@ export async function PUT(request) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("PUT /api/preferences/high-fit error:", err);
+    console.error(
+      JSON.stringify({ level: "error", code: "HIGH_FIT_PREFS_SAVE_FAILED" })
+    );
     return NextResponse.json(
       { data: null, error: { code: "SAVE_FAILED" } },
       { status: 500 }

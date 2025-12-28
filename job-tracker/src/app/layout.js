@@ -1,4 +1,5 @@
 import "./globals.css";
+import { QueryClientProvider } from "@/components/providers/QueryClientProvider";
 
 export const metadata = {
   title: "Job Tracker",
@@ -9,7 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="antialiased font-sans">
-        {children}
+        <QueryClientProvider>{children}</QueryClientProvider>
       </body>
     </html>
   );
