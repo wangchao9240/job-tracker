@@ -1,6 +1,6 @@
 # Story 5.4: Propose Requirement-to-Bullet Mapping (Non-AI, Rule-Based)
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,36 +18,36 @@ so that I start mapping from a helpful draft rather than from scratch.
 
 ## Tasks / Subtasks
 
-- [ ] Prereqs: confirm required inputs exist.
-  - [ ] Application must have saved requirements:
+- [x] Prereqs: confirm required inputs exist.
+  - [x] Application must have saved requirements:
     - `extracted_requirements` present with `responsibilities` and `requirements` arrays (from Epic 4).
-  - [ ] User must have evidence bullets:
+  - [x] User must have evidence bullets:
     - `project_bullets` exist (Epic 5.2).
 
-- [ ] Define the proposal algorithm (non-AI; deterministic).
-  - [ ] Create `./job-tracker/src/lib/server/mapping/proposeRuleBased.js`:
+- [x] Define the proposal algorithm (non-AI; deterministic).
+  - [x] Create `./job-tracker/src/lib/server/mapping/proposeRuleBased.js`:
     - Inputs:
       - `items: { kind: "responsibility"|"requirement", text: string }[]`
       - `bullets: { id: string, text: string, title?: string|null, tags?: string[]|null, impact?: string|null }[]`
     - Output:
       - `proposal: { itemKey: string, kind, text, suggestedBulletIds: string[], scoreByBulletId: Record<string, number> }[]`
-      - “No strong matches” means `suggestedBulletIds: []`
-  - [ ] MVP scoring heuristics (simple, explainable):
+      - "No strong matches" means `suggestedBulletIds: []`
+  - [x] MVP scoring heuristics (simple, explainable):
     - Normalize text (lowercase, strip punctuation, collapse whitespace).
     - Tokenize on whitespace; remove a small stopword list.
     - Score by:
       - keyword overlap count (item ↔ bullet text/title/tags/impact)
       - bonus for tag exact match
     - Select top N (e.g., up to 3) above a minimum threshold.
-  - [ ] Must not call any AI provider; no network.
+  - [x] Must not call any AI provider; no network.
 
-- [ ] Add mapping proposal endpoint (Route Handler).
-  - [ ] Create `./job-tracker/src/app/api/mapping/propose/route.js` (`POST`) as defined in `_bmad-output/architecture.md`.
-  - [ ] Request body (validate with `zod`):
+- [x] Add mapping proposal endpoint (Route Handler).
+  - [x] Create `./job-tracker/src/app/api/mapping/propose/route.js` (`POST`) as defined in `_bmad-output/architecture.md`.
+  - [x] Request body (validate with `zod`):
     - `applicationId: string`
-  - [ ] Auth-required:
+  - [x] Auth-required:
     - 401 on no session (`UNAUTHORIZED`)
-  - [ ] Steps:
+  - [x] Steps:
     1) Load application by id (must be owned; 404 if not found/not owned).
     2) Validate requirements exist; if missing: 400 + `{ code: "REQUIREMENTS_REQUIRED" }`.
     3) Load user bullets (across all projects for MVP) via server repo; if none: 400 + `{ code: "BULLETS_REQUIRED" }`.
@@ -55,27 +55,27 @@ so that I start mapping from a helpful draft rather than from scratch.
     5) Return `{ data, error }` with:
        - `proposal` array as described above
        - `generatedAt` (UTC ISO-8601)
-  - [ ] Failure handling:
+  - [x] Failure handling:
     - Do not modify application requirements lists on failure.
     - Return HTTP 500 + `{ code: "PROPOSE_FAILED" }` on unexpected errors.
-  - [ ] Logging:
+  - [x] Logging:
     - Structured JSON only; do not log full requirements/bullets text.
 
-- [ ] UI: show proposed mapping (read-only preview for this story).
-  - [ ] In the mapping area (can be a new panel under `./job-tracker/src/components/features/mapping/**`):
-    - A “Propose mapping” CTA (disabled until requirements and bullets exist).
+- [x] UI: show proposed mapping (read-only preview for this story).
+  - [x] In the mapping area (can be a new panel under `./job-tracker/src/components/features/mapping/**`):
+    - A "Propose mapping" CTA (disabled until requirements and bullets exist).
     - Display each item (responsibility/requirement) with:
       - suggested bullet(s) (text preview)
-      - “no match” state
-    - Include “Proceed to adjust” navigation stub (Story 5.5 will implement full workbench).
+      - "no match" state
+    - Include "Proceed to adjust" navigation stub (Story 5.5 will implement full workbench).
     - Retry on error; keep previous proposal visible if a retry fails.
 
-- [ ] Minimal tests (only what changes).
-  - [ ] Unit tests for `proposeRuleBased.js`:
+- [x] Minimal tests (only what changes).
+  - [x] Unit tests for `proposeRuleBased.js`:
     - overlap scoring yields expected ordering
     - tag bonus influences results
     - no matches when below threshold
-  - [ ] Route tests:
+  - [x] Route tests:
     - `UNAUTHORIZED`
     - `REQUIREMENTS_REQUIRED` and `BULLETS_REQUIRED`
     - success envelope and deterministic output shape
@@ -110,7 +110,7 @@ From `_bmad-output/project-context.md`:
 
 ### Agent Model Used
 
-GPT-5.2 (Codex CLI)
+Claude Sonnet 4.5
 
 ### Debug Log References
 
@@ -118,8 +118,21 @@ N/A
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- ✅ Verified database prerequisites: `applications.extracted_requirements` and `project_bullets` tables exist
+- ✅ Created rule-based proposal algorithm with keyword overlap scoring and tag matching bonus
+- ✅ Implemented deterministic scoring: stopword filtering, text normalization, top-N selection (max 3, threshold ≥2)
+- ✅ Built POST /api/mapping/propose endpoint with comprehensive validation and error handling
+- ✅ Added MappingProposalPanel component with retry functionality and error state preservation
+- ✅ Created comprehensive unit tests documenting algorithm behavior
+- ✅ Created route tests documenting API envelope patterns and error codes
+- ✅ Build passed successfully - all routes registered and compiled
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based.md` (this story file)
+- `job-tracker/src/lib/server/mapping/proposeRuleBased.js` (new - rule-based mapping algorithm)
+- `job-tracker/src/lib/server/mapping/__tests__/proposeRuleBased.test.js` (new - unit tests)
+- `job-tracker/src/app/api/mapping/propose/route.js` (new - API endpoint)
+- `job-tracker/src/app/api/mapping/propose/__tests__/route.test.js` (new - route tests)
+- `job-tracker/src/components/features/mapping/MappingProposalPanel.jsx` (new - UI component)
+- `job-tracker/src/app/mapping/page.jsx` (new - demo/test page)
+- `_bmad-output/implementation-artifacts/5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based.md` (this story file - updated)

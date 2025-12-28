@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+
+const ALL_PROJECTS = "__all__";
 
 /**
  * ProjectBulletsPanel component
@@ -28,6 +30,7 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [tagFilter, setTagFilter] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedTagFilter, setDebouncedTagFilter] = useState("");
 
   // Form state
   const [formValues, setFormValues] = useState({
@@ -46,6 +49,15 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Debounce tag filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTagFilter(tagFilter);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [tagFilter]);
+
   // Load projects on mount (if no initial project ID)
   useEffect(() => {
     if (!initialProjectId) {
@@ -58,7 +70,7 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
   // Load bullets when project, search, or filter changes
   useEffect(() => {
     loadBullets();
-  }, [selectedProjectId, debouncedSearch, tagFilter]);
+  }, [selectedProjectId, debouncedSearch, debouncedTagFilter]);
 
   async function loadProjects() {
     try {
@@ -79,6 +91,9 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
       }
 
       setProjects(result.data || []);
+      if (!initialProjectId && selectedProjectId === null) {
+        setSelectedProjectId(ALL_PROJECTS);
+      }
       setStatus("idle");
     } catch (err) {
       console.error("Failed to fetch projects:", err);
@@ -93,9 +108,10 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
 
       // Build query params
       const params = new URLSearchParams();
-      if (selectedProjectId) params.append("projectId", selectedProjectId);
+      const isAllProjects = selectedProjectId === ALL_PROJECTS;
+      if (selectedProjectId && !isAllProjects) params.append("projectId", selectedProjectId);
       if (debouncedSearch) params.append("q", debouncedSearch);
-      if (tagFilter) params.append("tag", tagFilter);
+      if (debouncedTagFilter) params.append("tag", debouncedTagFilter);
 
       const response = await fetch(`/api/project-bullets?${params.toString()}`, {
         cache: "no-store",
@@ -127,6 +143,7 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
     setSearchQuery("");
     setTagFilter("");
     setDebouncedSearch("");
+    setDebouncedTagFilter("");
   }
 
   function handleNew() {
@@ -158,6 +175,11 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
   async function handleSave() {
     if (!formValues.text.trim()) {
       setError("Bullet text is required.");
+      return;
+    }
+
+    if (mode === "create" && selectedProjectId === ALL_PROJECTS) {
+      setError("Select a specific project to create a bullet.");
       return;
     }
 
@@ -251,7 +273,7 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
   }
 
   // Project selector (if no initial project ID)
-  if (!initialProjectId && !selectedProjectId) {
+  if (!initialProjectId && selectedProjectId === null) {
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Project Bullets</h2>
@@ -273,13 +295,13 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
 
         {status !== "loading" && projects.length > 0 && (
           <div>
-            <Label htmlFor="project-select">Select a project to manage bullets:</Label>
+            <Label htmlFor="project-select">Select a project (or search across all):</Label>
             <select
               id="project-select"
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2"
             >
-              <option value="">-- Select Project --</option>
+              <option value={ALL_PROJECTS}>All Projects</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -294,14 +316,39 @@ export function ProjectBulletsPanel({ projectId: initialProjectId = null }) {
 
   // Main bullets list/form view
   if (mode === "list") {
+    const isAllProjects = selectedProjectId === ALL_PROJECTS;
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Project Bullets</h2>
-          <Button onClick={handleNew} disabled={status === "loading"}>
+          <Button onClick={handleNew} disabled={status === "loading" || isAllProjects}>
             New Bullet
           </Button>
         </div>
+
+        {!initialProjectId && projects.length > 0 && (
+          <div>
+            <Label htmlFor="project-select-inline">Project</Label>
+            <select
+              id="project-select-inline"
+              value={selectedProjectId ?? ALL_PROJECTS}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option value={ALL_PROJECTS}>All Projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            {isAllProjects && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Select a specific project to create new bullets.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Search and Filter Controls */}
         <div className="flex flex-col gap-3 sm:flex-row">

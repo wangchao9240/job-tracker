@@ -72,14 +72,14 @@ development_status:
 
   epic-5: in-progress
   5-1-create-and-manage-projects-experiences: done
-  5-2-create-and-manage-project-bullets-evidence-items: review
-  5-3-tagging-search-and-filtering-for-bullets: in-progress
-  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: ready-for-dev
-  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: ready-for-dev
+  5-2-create-and-manage-project-bullets-evidence-items: done
+  5-3-tagging-search-and-filtering-for-bullets: done
+  5-4-propose-requirement-to-bullet-mapping-non-ai-rule-based: review
+  5-5-mapping-workbench-review-confirm-and-persist-mapping-including-uncovered-requirements: review
   epic-5-retrospective: optional
 
   epic-6: in-progress
-  6-1-generate-cover-letter-draft-from-confirmed-mapping: ready-for-dev
+  6-1-generate-cover-letter-draft-from-confirmed-mapping: review
   6-2-iterate-draft-generation-with-user-constraints-tone-emphasis-keywords: ready-for-dev
   6-3-save-submitted-cover-letter-version-immutable-versioned: ready-for-dev
   6-4-submission-notes-for-traceability: ready-for-dev

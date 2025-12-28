@@ -9,10 +9,11 @@ import {
 import { normalizeTags } from "@/lib/utils/tagNormalization";
 
 // Validation schema for PATCH request
+const tagSchema = z.string().trim().min(1, "Tag cannot be empty").max(30).transform((value) => value.toLowerCase());
 const updateProjectBulletSchema = z.object({
   text: z.string().min(1).optional(),
   title: z.string().optional().nullable(),
-  tags: z.array(z.string()).optional().nullable(),
+  tags: z.array(tagSchema).max(20).optional().nullable(),
   impact: z.string().optional().nullable(),
 });
 

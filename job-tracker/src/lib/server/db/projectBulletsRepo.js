@@ -117,8 +117,11 @@ export async function listProjectBullets({ supabase, userId, projectId, q, tag }
   // Optional: text search across text, title, and impact fields
   // Using ilike for case-insensitive search (acceptable for MVP)
   if (q) {
-    const searchTerm = `%${q}%`;
-    query = query.or(`text.ilike.${searchTerm},title.ilike.${searchTerm},impact.ilike.${searchTerm}`);
+    const escaped = q.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+    const pattern = `%${escaped}%`;
+    query = query.or(
+      `text.ilike."${pattern}",title.ilike."${pattern}",impact.ilike."${pattern}"`
+    );
   }
 
   // Always order by updated_at descending

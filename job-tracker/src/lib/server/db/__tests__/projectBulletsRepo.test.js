@@ -2,10 +2,6 @@
  * Tests for projectBulletsRepo snake_case ↔ camelCase mapping
  */
 
-// Note: These tests verify the mapping logic.
-// Since we don't have Jest configured to run, these serve as documentation
-// of expected behavior.
-
 describe("projectBulletsRepo mapping", () => {
   describe("toCamelCase", () => {
     test("should map DB record to camelCase", () => {

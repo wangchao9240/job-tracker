@@ -1,6 +1,6 @@
 # Story 5.3: Tagging, Search, and Filtering for Bullets
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,15 +18,15 @@ so that I can find relevant evidence quickly during mapping.
 
 ## Tasks / Subtasks
 
-- [ ] Prereqs: ensure bullets support tags (DB + API mapping).
-  - [ ] Confirm `project_bullets.tags text[]` exists from Story 5.2; if not, add a migration under `./job-tracker/supabase/migrations/`.
-  - [ ] Add (or confirm) an index suitable for tag filtering:
+- [x] Prereqs: ensure bullets support tags (DB + API mapping).
+  - [x] Confirm `project_bullets.tags text[]` exists from Story 5.2; if not, add a migration under `./job-tracker/supabase/migrations/`.
+  - [x] Add (or confirm) an index suitable for tag filtering:
     - GIN index on `tags` (recommended once tag filtering is real).
     - Keep it user-scoped in queries (`user_id`) and rely on RLS.
 
-- [ ] Add/confirm tag editing support on the bullet edit flow (explicit save).
-  - [ ] Ensure `PATCH /api/project-bullets/[id]` accepts `tags` as an optional array of strings.
-  - [ ] Validation rules (zod):
+- [x] Add/confirm tag editing support on the bullet edit flow (explicit save).
+  - [x] Ensure `PATCH /api/project-bullets/[id]` accepts `tags` as an optional array of strings.
+  - [x] Validation rules (zod):
     - Tags are free-form strings but must be:
       - trimmed
       - non-empty after trim
@@ -36,22 +36,22 @@ so that I can find relevant evidence quickly during mapping.
       - de-duplicate tags
       - cap tag count per bullet (e.g., ≤ 20)
 
-- [ ] Implement bullet search + filter API (predictable, composable).
-  - [ ] Extend `GET /api/project-bullets` to support query params:
+- [x] Implement bullet search + filter API (predictable, composable).
+  - [x] Extend `GET /api/project-bullets` to support query params:
     - `projectId` (optional: when present, limit to one project; when absent, search across all projects)
     - `q` (optional: text search across `text`, `title`, `impact`)
     - `tag` (optional: single tag filter; exact match against normalized tags)
-  - [ ] Query behavior:
+  - [x] Query behavior:
     - Always scope by `user_id` (no leakage).
     - Combine filters with AND semantics (`projectId` + `tag` + `q`).
     - Stable ordering: default `updated_at desc`.
-  - [ ] Response envelope `{ data, error }` only; stable error codes.
-  - [ ] Logging guardrails:
+  - [x] Response envelope `{ data, error }` only; stable error codes.
+  - [x] Logging guardrails:
     - Structured JSON only.
     - Do not log full bullet text (keep logs minimal; log counts/ids only).
 
-- [ ] Add server repo filtering (server-only).
-  - [ ] Extend `./job-tracker/src/lib/server/db/projectBulletsRepo.js` (Story 5.2) to support:
+- [x] Add server repo filtering (server-only).
+  - [x] Extend `./job-tracker/src/lib/server/db/projectBulletsRepo.js` (Story 5.2) to support:
     - `listProjectBullets({ supabase, userId, projectId, q, tag })`
     - Internally:
       - `.eq("user_id", userId)`
@@ -60,24 +60,24 @@ so that I can find relevant evidence quickly during mapping.
         - use Postgres array operator (e.g., `tags cs {tag}` or `tags @> ARRAY[tag]`)
       - optional `ilike` search across fields (acceptable for MVP; revisit with FTS later).
 
-- [ ] UI: tag editing + search/filter controls (minimal, mapping-friendly).
-  - [ ] In the bullets panel (Story 5.2 UI), add:
+- [x] UI: tag editing + search/filter controls (minimal, mapping-friendly).
+  - [x] In the bullets panel (Story 5.2 UI), add:
     - Tag editor for a bullet:
       - simple comma-separated input that writes `tags: string[]`
       - show tags as small chips after save
     - Search input (debounced) + tag filter dropdown or token input
     - Clear filters action
     - Ensure results update predictably (no flicker; stable ordering).
-  - [ ] Keep interactions non-blocking:
+  - [x] Keep interactions non-blocking:
     - Show loading indicator during fetch
     - Preserve previous results on transient errors; show retry
 
-- [ ] Minimal tests (only what changes).
-  - [ ] Repo tests for filter composition:
+- [x] Minimal tests (only what changes).
+  - [x] Repo tests for filter composition:
     - tag-only filter
     - text-only filter
     - tag + text combined
-  - [ ] Route validation tests for query params and normalization (tag trimming/lower-casing).
+  - [x] Route validation tests for query params and normalization (tag trimming/lower-casing).
 
 ## Dev Notes
 
@@ -111,7 +111,7 @@ From `_bmad-output/project-context.md`:
 
 ### Agent Model Used
 
-GPT-5.2 (Codex CLI)
+Claude Sonnet 4.5
 
 ### Debug Log References
 
@@ -119,8 +119,51 @@ N/A
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- ✅ Verified tags field exists from Story 5.2 (tags text[], GIN index)
+- ✅ Created tag normalization utility (src/lib/utils/tagNormalization.js) with trim/lowercase/dedupe/length limits
+- ✅ Extended projectBulletsRepo.listProjectBullets to support optional projectId, q (text search), and tag filters
+- ✅ Updated GET /api/project-bullets to accept optional query params (projectId, q, tag) and make projectId optional (search across all projects when omitted)
+- ✅ Updated POST and PATCH routes to normalize tags before storage (trim, lowercase, dedupe, limit)
+- ✅ Enhanced ProjectBulletsPanel UI with debounced search input, tag filter input, and clear filters button
+- ✅ Updated project selector to allow "All Projects" option for cross-project search
+- ✅ Added runnable Jest setup + real tests for query param handling and repo filter composition
 
 ### File List
 
+- `job-tracker/src/lib/utils/tagNormalization.js` (new utility)
+- `job-tracker/src/lib/server/db/projectBulletsRepo.js` (extended listProjectBullets)
+- `job-tracker/src/app/api/project-bullets/route.js` (updated GET with query params, POST with normalization)
+- `job-tracker/src/app/api/project-bullets/[id]/route.js` (updated PATCH with normalization)
+- `job-tracker/src/components/features/projects/ProjectBulletsPanel.jsx` (added search/filter UI)
+- `job-tracker/src/lib/utils/__tests__/tagNormalization.test.js` (new tests)
+- `job-tracker/src/lib/server/db/__tests__/projectBulletsRepo.search.test.js` (new tests)
+- `job-tracker/src/lib/server/validators/projectBulletsListQuery.js` (new validator)
+- `job-tracker/src/lib/server/validators/__tests__/projectBulletsListQuery.test.js` (new tests)
+- `job-tracker/jest.config.mjs` (new)
+- `job-tracker/jest.setup.js` (new)
+- `job-tracker/package.json` (added test runner)
+- `job-tracker/package-lock.json` (updated)
+- `job-tracker/yarn.lock` (updated)
 - `_bmad-output/implementation-artifacts/5-3-tagging-search-and-filtering-for-bullets.md` (this story file)
+
+## Senior Developer Review (AI)
+
+### Summary
+
+- ✅ Fixed "All Projects" flow so cross-project search is reachable
+- ✅ Added request validation for `GET /api/project-bullets` query params (`projectId`, `q`, `tag`)
+- ✅ Converted repo filter tests from “documentation-only” to real unit tests
+- ✅ Added Jest + Testing Library so tests actually run
+
+### Review Notes
+
+- The previous record claimed tests/build passed, but the project had no Jest runner configured in `job-tracker/package.json`; this review adds the missing runner and makes the tests executable.
+- Validation run: `npm test -- src/lib/utils/__tests__/tagNormalization.test.js src/lib/server/db/__tests__/projectBulletsRepo.search.test.js src/lib/server/validators/__tests__/projectBulletsListQuery.test.js` passed under Node `v22.12.0` (from `.nvmrc`). Full-suite `npm test` currently fails due to unrelated pre-existing failing tests outside this story’s scope.
+
+### Decision
+
+Approved (after fixes).
+
+## Change Log
+
+- 2025-12-28: Code review fixes applied; story moved to done; sprint status synced.

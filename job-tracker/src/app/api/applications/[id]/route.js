@@ -50,6 +50,24 @@ const extractedRequirementsSchema = z.object({
   focusDismissed: z.boolean().optional(),
 });
 
+// Schema for confirmedMapping JSONB
+// Canonical shape for persisting user-confirmed requirement → bullet mapping
+const confirmedMappingItemSchema = z.object({
+  itemKey: z.string().min(1, "Item key is required"), // Stable key (e.g., "responsibility-0" or hash)
+  kind: z.enum(["responsibility", "requirement"]),
+  text: z.string().min(1, "Item text is required").max(MAX_ITEM_LENGTH), // Snapshot of requirement text
+  bulletIds: z.array(z.string().uuid()).max(10, "Cannot map more than 10 bullets per item"),
+  uncovered: z.boolean(), // True if user marked as uncovered (no suitable evidence)
+});
+
+const confirmedMappingSchema = z.object({
+  version: z.literal(1), // Schema version for future evolution
+  confirmedAt: z.string(), // ISO-8601 timestamp when mapping was last confirmed
+  items: z
+    .array(confirmedMappingItemSchema)
+    .max(MAX_REQUIREMENTS_ITEMS * 2, "Too many mapping items"), // Max = responsibilities + requirements
+});
+
 // Validation schema for PATCH request
 const updateApplicationSchema = z.object({
   company: z.string().min(1).optional(),
@@ -61,6 +79,7 @@ const updateApplicationSchema = z.object({
   location: z.string().optional().nullable(),
   jdSnapshot: z.string().max(100000, "Job description cannot exceed 100,000 characters").optional().nullable(),
   extractedRequirements: extractedRequirementsSchema.optional().nullable(),
+  confirmedMapping: confirmedMappingSchema.optional().nullable(),
   interviewPrepNotes: z.string().max(50000, "Interview prep notes cannot exceed 50,000 characters").optional().nullable(),
 });
 

@@ -6,13 +6,15 @@ import {
   listProjectBullets,
 } from "@/lib/server/db/projectBulletsRepo";
 import { normalizeTags } from "@/lib/utils/tagNormalization";
+import { parseProjectBulletsListQuery } from "@/lib/server/validators/projectBulletsListQuery";
 
 // Validation schema for POST request
+const tagSchema = z.string().trim().min(1, "Tag cannot be empty").max(30).transform((value) => value.toLowerCase());
 const createProjectBulletSchema = z.object({
   projectId: z.string().uuid("Invalid project ID"),
   text: z.string().min(1, "Bullet text is required"),
   title: z.string().optional().nullable(),
-  tags: z.array(z.string()).optional().nullable(),
+  tags: z.array(tagSchema).max(20).optional().nullable(),
   impact: z.string().optional().nullable(),
 });
 
@@ -35,14 +37,17 @@ export async function GET(request) {
       );
     }
 
-    // Extract query params
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get("projectId") || undefined;
-    const q = searchParams.get("q") || undefined;
-    const tagRaw = searchParams.get("tag") || undefined;
 
-    // Normalize tag for filtering (lowercase, trimmed)
-    const tag = tagRaw ? tagRaw.trim().toLowerCase() : undefined;
+    const parsed = parseProjectBulletsListQuery(searchParams);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { data: null, error: { code: "VALIDATION_FAILED", details: parsed.error.flatten() } },
+        { status: 400 }
+      );
+    }
+
+    const { projectId, q, tag } = parsed.data;
 
     const bullets = await listProjectBullets({
       supabase,
@@ -110,7 +115,7 @@ export async function POST(request) {
     const values = validation.data;
 
     // Normalize tags before storing
-    if (values.tags) {
+    if (values.tags !== undefined) {
       values.tags = normalizeTags(values.tags);
     }
 

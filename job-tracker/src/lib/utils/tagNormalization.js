@@ -33,8 +33,10 @@ export function normalizeTags(tags) {
       // Skip empty tags
       if (!trimmed) return null;
 
-      // Limit tag length
-      return trimmed.slice(0, MAX_TAG_LENGTH);
+      // Reject overly-long tags (validation should catch these upstream)
+      if (trimmed.length > MAX_TAG_LENGTH) return null;
+
+      return trimmed;
     })
     .filter((tag) => tag !== null); // Remove nulls
 
