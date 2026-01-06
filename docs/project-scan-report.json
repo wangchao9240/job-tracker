@@ -1,0 +1,56 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2025-12-29T02:20:00Z",
+    "last_updated": "2025-12-29T02:22:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "/Users/wang/Documents/qut/projects/job-tracker/job-tracker",
+  "output_folder": "/Users/wang/Documents/qut/projects/job-tracker/docs",
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2025-12-29T02:22:00Z",
+      "summary": "Classified as monolith with 1 part"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2025-12-29T02:24:00Z",
+      "summary": "Found 1 existing docs"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2025-12-29T02:26:00Z",
+      "summary": "Tech stack: Next.js on JavaScript"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2025-12-29T02:30:00Z",
+      "summary": "Conditional analysis complete, 3 files written"
+    },
+    {
+      "step": "step_10",
+      "status": "completed",
+      "timestamp": "2025-12-29T02:35:00Z",
+      "summary": "Master index generated"
+    }
+  ],
+  "current_step": "completed",
+  "findings": {
+    "project_classification": "Monolith, 1 part, Next.js/React/Supabase"
+  },
+  "project_types": [
+    {
+      "part_id": "main",
+      "project_type_id": "web",
+      "display_name": "Web Application"
+    }
+  ],
+  "outputs_generated": ["project-scan-report.json"],
+  "resume_instructions": "Continue from step 2"
+}

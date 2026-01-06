@@ -14,18 +14,24 @@ persona:
   principles: []
 
 # Add custom critical actions (appended after standard config loading)
-critical_actions: []
+critical_actions:
+  - "When designing UI/UX elements (buttons, modals, forms, cards, layouts), ALWAYS use the ui-ux-pro-max skill for professional styling and design patterns"
+  - "Before generating HTML design mockups, color palettes, or component systems, invoke the ui-ux-pro-max skill to leverage its 50 design styles, 21 color palettes, and 50 font pairings"
+  - "When user requests design improvements or visual enhancements, consider using ui-ux-pro-max skill's capabilities for glassmorphism, minimalism, brutalism, dark mode, responsive design, etc."
 
 # Add persistent memories for the agent
-memories: []
-# Example:
-# memories:
-#   - "User prefers detailed technical explanations"
-#   - "Current project uses React and TypeScript"
+memories:
+  - "This agent has access to ui-ux-pro-max skill with professional UI/UX capabilities: 50 styles, 21 palettes, 50 font pairings, 20 chart types"
+  - "ui-ux-pro-max supports these stacks: React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind"
+  - "Use ui-ux-pro-max for: design system creation, color palette generation, typography pairing, responsive layouts, accessibility improvements, animations, and component design"
+  - "Available design styles in ui-ux-pro-max: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, skeuomorphism, flat design"
 
 # Add custom menu items (appended to base menu)
 # Don't include * prefix or help/exit - auto-injected
-menu: []
+menu:
+  - trigger: ui-ux-pro-max
+    action: "#invoke-ui-ux-pro-max"
+    description: "Invoke UI/UX Pro Max skill for professional design generation"
 # Example:
 # menu:
 #   - trigger: my-workflow
@@ -33,7 +39,15 @@ menu: []
 #     description: My custom workflow
 
 # Add custom prompts (for action="#id" handlers)
-prompts: []
+prompts:
+  - id: invoke-ui-ux-pro-max
+    content: |
+      Use the Skill tool to invoke the ui-ux-pro-max skill.
+
+      Ask the user what they want to design or improve, then call:
+      - Skill tool with skill="ui-ux-pro-max" and appropriate args
+
+      After ui-ux-pro-max generates the design, integrate it into the current workflow step.
 # Example:
 # prompts:
 # - id: my-prompt
