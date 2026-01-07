@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import OpenAI from "openai";
-const client = new OpenAI();
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 

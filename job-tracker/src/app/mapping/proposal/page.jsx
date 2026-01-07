@@ -4,14 +4,14 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MappingProposalPanel } from "@/components/features/mapping/MappingProposalPanel";
 
-export default function MappingProposalPage() {
+function MappingProposalContent() {
   const searchParams = useSearchParams();
   const initialApplicationId = searchParams.get("applicationId") || "";
 
@@ -21,9 +21,7 @@ export default function MappingProposalPage() {
   const effectiveApplicationId = (applicationId || initialApplicationId).trim();
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-6">Mapping Proposal</h1>
-
+    <>
       <div className="mb-6 p-4 rounded bg-muted">
         <p className="text-sm text-muted-foreground mb-4">
           Generate a deterministic, rule-based proposal (no AI) for mapping requirements/responsibilities to your bullets.
@@ -58,6 +56,17 @@ export default function MappingProposalPage() {
           <p>Enter an application ID above to generate a proposal.</p>
         </div>
       )}
+    </>
+  );
+}
+
+export default function MappingProposalPage() {
+  return (
+    <div className="container mx-auto py-8 max-w-6xl">
+      <h1 className="text-3xl font-bold mb-6">Mapping Proposal</h1>
+      <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+        <MappingProposalContent />
+      </Suspense>
     </div>
   );
 }

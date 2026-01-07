@@ -5,14 +5,14 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { MappingWorkbench } from "@/components/features/mapping/MappingWorkbench";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function MappingPage() {
+function MappingPageContent() {
   const searchParams = useSearchParams();
   const initialApplicationId = searchParams.get("applicationId") || "";
 
@@ -22,9 +22,7 @@ export default function MappingPage() {
   const effectiveApplicationId = (applicationId || initialApplicationId).trim();
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-6">Mapping Workbench</h1>
-
+    <>
       <div className="mb-6 p-4 rounded bg-muted">
         <p className="text-sm text-muted-foreground mb-4">
           💡 <strong>Demo Note:</strong> This page demonstrates the full mapping workbench functionality (Story 5.5).
@@ -61,6 +59,17 @@ export default function MappingPage() {
           <p>Enter an application ID above to start mapping.</p>
         </div>
       )}
+    </>
+  );
+}
+
+export default function MappingPage() {
+  return (
+    <div className="container mx-auto py-8 max-w-6xl">
+      <h1 className="text-3xl font-bold mb-6">Mapping Workbench</h1>
+      <Suspense fallback={<div className="text-center py-12">Loading...</div>}>
+        <MappingPageContent />
+      </Suspense>
     </div>
   );
 }
