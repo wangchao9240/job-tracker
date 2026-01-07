@@ -1,5 +1,9 @@
 .DS_Store
 .tmp/
 .next/
+node_modules/
 
 _bmad-output/
+
+# Codex sessions (may contain API keys)
+.codex/
